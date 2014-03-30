@@ -5,7 +5,7 @@ _tabversion = '3.2'
 
 _lr_method = 'LALR'
 
-_lr_signature = '\xd2R\x89s\xe8\xb6\xb5\xd8\x92P\x83\xaea4V#'
+_lr_signature = 'k\xef\x1a\xd9!t/\xa0\xd4I\xcbo\x98\xe7(e'
     
 _lr_action_items = {'STRING':([3,],[4,]),'RPAREN':([4,],[5,]),'ID':([0,],[2,]),'LPAREN':([2,],[3,]),'$end':([1,5,],[0,-1,]),}
 
@@ -26,5 +26,5 @@ for _k, _v in _lr_goto_items.items():
 del _lr_goto_items
 _lr_productions = [
   ("S' -> call","S'",1,None,None,None),
-  ('call -> ID LPAREN STRING RPAREN','call',4,'p_call','graphene.py',24),
+  ('call -> ID LPAREN STRING RPAREN','call',4,'p_call','graphene.py',30),
 ]
