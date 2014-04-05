@@ -140,6 +140,13 @@ def outToInLinks(links):
 
 #internal representation to output
 
+def inToOutNodes(nodeL):
+    finalStr =[]
+    for node in nodeL:
+        print node
+        finalStr.append({'id:': node, 'name': nodeL[node]})
+    return finalStr
+
 def inToOutLinks(sources):
     final = []
     for source in sources.keys():
