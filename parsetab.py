@@ -5,9 +5,9 @@ _tabversion = '3.2'
 
 _lr_method = 'LALR'
 
-_lr_signature = 'k\xef\x1a\xd9!t/\xa0\xd4I\xcbo\x98\xe7(e'
+_lr_signature = '\x12\x1dd#\xf0\x80\xf7\x08\xb9\xa1\xb5g\x08\x8e:N'
     
-_lr_action_items = {'STRING':([3,],[4,]),'RPAREN':([4,],[5,]),'ID':([0,],[2,]),'LPAREN':([2,],[3,]),'$end':([1,5,],[0,-1,]),}
+_lr_action_items = {'RPAREN':([3,4,5,6,7,8,10,],[-4,-2,9,-5,-6,-4,-3,]),'STRING':([3,8,],[7,7,]),'COMMA':([4,6,7,],[8,-5,-6,]),'LPAREN':([2,],[3,]),'ID':([0,3,8,],[2,6,6,]),'$end':([1,9,],[0,-1,]),}
 
 _lr_action = { }
 for _k, _v in _lr_action_items.items():
@@ -16,7 +16,7 @@ for _k, _v in _lr_action_items.items():
       _lr_action[_x][_k] = _y
 del _lr_action_items
 
-_lr_goto_items = {'call':([0,],[1,]),}
+_lr_goto_items = {'arglist':([3,8,],[5,10,]),'call':([0,],[1,]),'idOrString':([3,8,],[4,4,]),}
 
 _lr_goto = { }
 for _k, _v in _lr_goto_items.items():
@@ -26,5 +26,10 @@ for _k, _v in _lr_goto_items.items():
 del _lr_goto_items
 _lr_productions = [
   ("S' -> call","S'",1,None,None,None),
-  ('call -> ID LPAREN STRING RPAREN','call',4,'p_call','graphene.py',30),
+  ('call -> ID LPAREN arglist RPAREN','call',4,'p_call','graphene.py',41),
+  ('arglist -> idOrString','arglist',1,'p_arglist','graphene.py',48),
+  ('arglist -> idOrString COMMA arglist','arglist',3,'p_arglist','graphene.py',49),
+  ('arglist -> <empty>','arglist',0,'p_arglist','graphene.py',50),
+  ('idOrString -> ID','idOrString',1,'p_idOrString','graphene.py',63),
+  ('idOrString -> STRING','idOrString',1,'p_idOrString','graphene.py',64),
 ]

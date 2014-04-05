@@ -1,9 +1,13 @@
 import ply.yacc as yacc
 import ply.lex as lex
+from itertools import chain
+import itertools
+
+debug = 0
 
 #print("Hello world!")
 
-tokens = ('ID', 'LPAREN', 'RPAREN', 'STRING', 'OPTIONALWHITESPACE', 'WHITESPACE')
+tokens = ('ID', 'LPAREN', 'RPAREN', 'STRING', 'WHITESPACE', 'COMMA')
 
 t_ID = r'[a-zA-Z\_][a-zA-Z\_0-9]+'
      
@@ -11,11 +15,11 @@ t_LPAREN = r'\('
 
 t_RPAREN = r'\)'
     
-t_STRING = r'\"[a-zA-Z\ 0-9]+\"'
-
-t_OPTIONALWHITESPACE = r'\s*'
+t_STRING = r'\"[a-zA-Z\ 0-9]*\"'
 
 t_WHITESPACE = r'\s+'
+
+t_COMMA = r','
 
 def t_error(t):
     print "Lex Error"
@@ -24,7 +28,11 @@ def strlen(G):
     print "Count:", len(G)
 
 def myprint(G):
-    print G
+    #print len(G)
+    for x in G:
+        print x[1:-1],
+        
+    print ""
     
 def goutput():
     print "Doing graph output. BRB"
@@ -38,12 +46,53 @@ lexer = lex.lex();
 
 
 def p_call(p):
-    '''call : ID OPTIONALWHITESPACE LPAREN OPTIONALWHITESPACE STRING OPTIONAL WHITESPACE RPAREN'''
+    '''call : ID LPAREN arglist RPAREN'''
+    
+    if(debug):
+        print "call ",len(p)
+        for x in p:
+            print x,
+        print ""
+    
     if(p[1] in func_map):
-       func_map[p[1]](p[3][1:-1])
+        func_map[p[1]](p[3])
     else:
-        print "You sir, suck."
+        print "Function not found. Please replace developer."
 
+def p_arglist(p):
+    '''arglist : idOrString
+               | idOrString COMMA arglist
+               | '''
+    if(debug):
+        print "arglist ", len(p), p[0],p[1]
+        for x in p:
+            print x,",",
+        print ""
+        
+    arglist = []
+    i=1
+    while i<len(p):
+        arglist.append(p[i])
+        i+=2
+    if(p[0] == None):
+        p[0] = arglist
+    else:
+        p[0].extend(arglist)
+        
+    p[0] = list(chain.from_iterable(itertools.repeat(x,1) if isinstance(x,str) else x for x in p[0]))
+    #itertools.repeat(x,1) if isinstance(x,str) else x for x in items
+
+def p_idOrString(p):
+    ''' idOrString : ID
+                   | STRING '''
+                   
+    if(debug):
+        print "idorstr", len(p)
+        for x in p:
+            print x,",",
+        print ""
+    p[0] = p[1];
+    
 parser = yacc.yacc()
 
 class Graph:
