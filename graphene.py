@@ -71,6 +71,35 @@ class Graph:
         id = __globalGraphIDVal
         __globalGraphIDVal += 1
 
+#output format to internal representation
+def outToInNodes(nodes):
+    final =dict()
+    for node in nodes:
+        final[node['id']] = node['name']
+    return final
+
+
+def outToInLinks(links):
+    final = dict()
+    for link in links:
+        try:
+            final[link['source']].append({'target':link['target'], 'weight':link['weight']})
+        except KeyError:
+            final[link['source']] = [{'target':link['target'], 'weight':link['weight']}]
+    return final
+
+
+#internal representation to output
+
+def inToOutLinks(sources):
+    final = []
+    for source in sources.keys():
+        print source
+        for target in sources[source]:
+           final.append({'source': source, 'target' :target['target'], 'left':True, 'right':True, 'weight':target['weight']})
+
+    return final
+
 
 while True: 
 
