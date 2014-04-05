@@ -2,6 +2,7 @@ import ply.yacc as yacc
 import ply.lex as lex
 from itertools import chain
 import itertools
+import sys
 
 debug = 0
 
@@ -22,7 +23,12 @@ t_WHITESPACE = r'\s+'
 t_COMMA = r','
 
 def t_error(t):
-    print "Lex Error"
+    print "Syntax error:"
+    print "Type: ",t.type
+    print "Token: ",t.value
+    print "Line: ",t.lineno
+    print "Column: ",t.lexpos
+    sys.exit()
 
 def strlen(G):
     print "Count:", len(G)
