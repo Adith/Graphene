@@ -5,9 +5,9 @@ _tabversion = '3.2'
 
 _lr_method = 'LALR'
 
-_lr_signature = 'k\xef\x1a\xd9!t/\xa0\xd4I\xcbo\x98\xe7(e'
+_lr_signature = '.@*\xad\xec?\xfc\xd8\xf0\xcc\x86G\x1a*i\xa3'
     
-_lr_action_items = {'STRING':([3,],[4,]),'RPAREN':([4,],[5,]),'ID':([0,],[2,]),'LPAREN':([2,],[3,]),'$end':([1,5,],[0,-1,]),}
+_lr_action_items = {'RPAREN':([6,7,],[8,9,]),'STRING':([4,],[6,]),'LPAREN':([2,5,],[4,7,]),'ID':([0,3,],[2,5,]),'DOT':([2,],[3,]),'$end':([1,8,9,],[0,-1,-2,]),}
 
 _lr_action = { }
 for _k, _v in _lr_action_items.items():
@@ -26,5 +26,6 @@ for _k, _v in _lr_goto_items.items():
 del _lr_goto_items
 _lr_productions = [
   ("S' -> call","S'",1,None,None,None),
-  ('call -> ID LPAREN STRING RPAREN','call',4,'p_call','graphene.py',30),
+  ('call -> ID LPAREN STRING RPAREN','call',4,'p_call','graphene.py',41),
+  ('call -> ID DOT ID LPAREN RPAREN','call',5,'p_call','graphene.py',42),
 ]

@@ -1,0 +1,33 @@
+<html>
+<head>
+</head>
+<body>
+<div>
+    <button id="copy-button" data-clipboard-text="Testing Me!" title="Click to copy me.">Copy to Clipboard</button>
+</div>
+<script src="javascript/jquery.min.js"></script>
+<script src="javascript/d3.v3.min.js"></script>
+<script src="javascript/app.js"></script>
+<script src="javascript/ZeroClipboard.js"></script>
+
+ 
+<script type="text/javascript">
+var client;
+$(document).ready(function() {
+	client = new ZeroClipboard( document.getElementById("copy-button"), {
+        moviePath: "images/ZeroClipboard.swf"
+    });
+
+client.on( "load", function( readyEvent ) {
+
+  client.on( "complete", function( event ) {
+    window.close();
+  } );
+} );
+    });
+
+</script>
+<link rel="stylesheet" type="text/css" href="css/app.css"/>
+<link rel="stylesheet" type="text/css" href="http://cdnjs.cloudflare.com/ajax/libs/foundation/5.2.1/css/foundation.min.css">
+</body>
+</html>
