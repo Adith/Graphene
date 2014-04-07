@@ -1,7 +1,9 @@
 import ply.yacc as yacc
 import ply.lex as lex
 import os, sys
+
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+
 from vendors import guiInput
 from itertools import chain
 import itertools
