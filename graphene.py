@@ -9,6 +9,7 @@ import sys
 import types
 import decimal
 import json
+from lib import grapheneLib as lib
 
 debug = 0
 
@@ -18,7 +19,7 @@ tokens = ('ID', 'LPAREN', 'RPAREN', 'STRING', 'NUMBER', 'WHITESPACE', 'COMMA', '
 literals = [';', '=', '+', '-', '*', '/']
 ids={}
 
-t_ID = r'[a-zA-Z\_][a-zA-Z\_0-9]+'
+t_ID = r'[a-zA-Z\_][a-zA-Z\_0-9]*'
      
 t_DOT = r'\.'
 
@@ -76,15 +77,32 @@ def myprint(G):
     print ""
     
 def goutput():
+    # Dump state to json
+    with open('/proc/state.json', 'w') as outfile:
+        json.dump({"nodes":nodeList, "lastNodeId": len(nodeList)-1, "links": graphList}, outfile)
     print "Doing graph output. BRB"
 
 def ginput():
+    
     input = guiInput.main()
-    # print input
-    print json.dumps(json.loads(input), indent=4, sort_keys=True)
+    
+    # pretty prints json response
+    if debug:
+        print json.dumps(json.loads(input), indent=4, sort_keys=True)
+    
+    input = json.loads(input)
 
+    lib.graphList.append(lib.Graph(input['links']))
 
-func_map = {'print' : myprint, 'strlen' : strlen, 'graphene' : {'input' : ginput, 'output' : goutput} }    
+    for k in input['nodes']:
+        lib.nodeList.insert(k["id"],lib.Node(k));
+
+    print lib.nodeList
+    print lib.graphList
+    print outToInNodes(input['nodes'])
+    print outToInLinks(input['links'])
+
+func_map = {'print' : myprint, 'strlen' : strlen, 'graphene' : {'input' : ginput, 'output' : goutput} }   
     
 lexer = lex.lex();
 
@@ -233,31 +251,6 @@ def p_isId(p):
     p[0] = ids[p[1]];
     
 parser = yacc.yacc()
-
-class Graph:
-    ''' Internal representation of a graph object '''
-    id = -1
-    __globalGraphIDVal = 0
-    
-    class Node:
-        __globalNodeIDVal = 0
-        id = -1
-        properties = dict()
-        
-        
-        def __init(self):
-            id = __globalNodeIDVal
-            __globalNodeIDVal += 1
-    
-    adjList = []
-    nodes = []
-    edges = []
-    
-    def __init__(self):
-        nodes = []
-        edges = []
-        id = __globalGraphIDVal
-        __globalGraphIDVal += 1
 
 #output format to internal representation
 def outToInNodes(nodes):

@@ -12,16 +12,28 @@ var svg = d3.select('body')
 //  - nodes are known by 'id', not by index in array.
 //  - reflexive edges are indicated on the node (as a bold black circle).
 //  - links are always source < target; edge directions are set by 'left' and 'right'.
-var nodes = [
-    {id: 0, name: 'Alpha'},
-    {id: 1, name: 'Beta'},
-    {id: 2, name: 'Gamma'}
-  ],
-  lastNodeId = 2,
-  links = [
-    {source: nodes[0], target: nodes[1], left: false, right: true, weight: 0 },
-    {source: nodes[1], target: nodes[2], left: false, right: true, weight: 1 }
-  ];
+// get json from file
+var nodes = [], lastNodeId, links = [];
+
+$.ajax({
+  url: '../proc/state.json',
+  dataType: 'json',
+  async: false,
+  success: function(data) {
+    console.log(data);
+        $.each(data.nodes,function(i,node){
+              nodes.push({"id": i, "name": node["name"]});
+            });
+            console.log(nodes);
+            lastNodeId = data["lastNodeId"];
+            $.each(data.links,function(i,link){
+              links.push({"source": link["source"], "target": link["target"], "left": link["left"], "right": link["right"], "weight": link["weight"]});
+            }); 
+          }
+});
+
+console.log(nodes);
+console.log(links);
 
 // init D3 force layout
 var force = d3.layout.force()

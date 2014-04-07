@@ -1,0 +1,16 @@
+{
+    "nodes" :
+    [
+    {"id": 0, "name": "Alpha"},
+    {"id": 1, "name": "Beta"},
+    {"id": 2, "name": "Gamma"},
+    {"id": 3, "name": "Gamma"},
+    {"id": 4, "name": "Gamma"},
+    {"id": 5, "name": "Gamma"}
+  ],
+  "lastNodeId" : 5,
+  "links" : [
+    {"source": 0, "target": 1, "left": false, "right": true, "weight": 0 },
+    {"source": 1, "target": 2, "left": false, "right": true, "weight": 1 }
+]
+}
