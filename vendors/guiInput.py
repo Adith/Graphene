@@ -47,10 +47,8 @@ def main():
         # Has to be tested.
         webbrowser.get('windows-default').open(url)
 
-    
-
     while pyperclip.paste() == oldValue:
-        time.sleep(1)
+        time.sleep(0.5)
 
     continue_server = False
     retValue = pyperclip.paste()
