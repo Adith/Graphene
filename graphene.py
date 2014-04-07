@@ -31,7 +31,7 @@ t_RPAREN = r'\)'
     
 t_STRING = r'\"[a-zA-Z\ 0-9]*\"'
 
-t_WHITESPACE = r'\s+'
+#t_WHITESPACE = r'\s+'
 
 t_COMMA = r','
 
@@ -49,6 +49,10 @@ def t_newline(t):
     t.type = "NEWLINE"
     if t.lexer.paren_count == 0:
         return t
+
+def t_WHITESPACE(t):
+    r'\s+'
+    t.lexpos += len(t.value)
 
 def t_NUMBER(t):
     r"""(\d+(\.\d*)?|\.\d+)([eE][-+]? \d+)?"""
@@ -104,7 +108,7 @@ def ginput():
     print outToInNodes(input['nodes'])
     print outToInLinks(input['links'])
 
-func_map = {'print' : myprint, 'strlen' : strlen, 'graphene' : {'input' : ginput, 'output' : goutput} }   
+func_map = {'print' : myprint, 'strlen' : strlen, 'graphene' : {'input' : ginput, 'output' : goutput}, 'exit' : exit }   
     
 lexer = lex.lex();
 
@@ -189,7 +193,9 @@ def p_expression_name(p):
 def p_call(p):
     '''call : ID LPAREN arglist RPAREN
             | ID DOT ID LPAREN arglist RPAREN 
-            | ID DOT ID LPAREN RPAREN '''
+            | ID DOT ID LPAREN RPAREN 
+            | ID LPAREN RPAREN'''
+
     
     if(debug):
         print "call ",len(p)
@@ -201,6 +207,8 @@ def p_call(p):
         func_map[p[1]][p[3]](p[5])
     elif(len(p) == 6):
         func_map[p[1]][p[3]]()
+    elif(len(p) == 4):
+        func_map[p[1]]()
     else:
         if(p[1] in func_map):
             func_map[p[1]](p[3])
@@ -252,6 +260,9 @@ def p_isId(p):
     ''' idOrString : ID'''
     p[0] = ids[p[1]];
     
+def exit():
+    sys.exit(0);
+
 parser = yacc.yacc()
 
 #output format to internal representation
