@@ -5,6 +5,7 @@ import webbrowser
 import pyperclip
 import time
 import select
+import os
 port = 0
 
 continue_server = True
@@ -29,15 +30,24 @@ def run_while_true():
 
 def main():
     global continue_server, port
+    oldValue = pyperclip.paste()
     thread = Thread(target = run_while_true, args = ())
     thread.start()
     
     while port==0:
         pass
-    url = 'localhost:'+str(port)+'/template/d3.html'
-    webbrowser.open_new(url)
+    url = 'http://localhost:'+str(port)+'/template/d3.html'
+    if os.name == 'posix':
+        # Works best on Chrome.
+        try:
+            webbrowser.get("open -a /Applications/Google\ Chrome.app %s").open(url)
+        except Exception, e:
+            webbrowser.get().open(url)
+    elif os.name == 'nt':
+        # Has to be tested.
+        webbrowser.get('windows-default').open(url)
 
-    oldValue = pyperclip.paste()
+    
 
     while pyperclip.paste() == oldValue:
         time.sleep(1)

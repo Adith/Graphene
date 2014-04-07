@@ -8,6 +8,7 @@ import itertools
 import sys
 import types
 import decimal
+import json
 
 debug = 0
 
@@ -20,6 +21,7 @@ ids={}
 t_ID = r'[a-zA-Z\_][a-zA-Z\_0-9]+'
      
 t_DOT = r'\.'
+
 t_LPAREN = r'\('
 
 t_RPAREN = r'\)'
@@ -58,6 +60,11 @@ def t_error(t):
     print "Column: ",t.lexpos
     sys.exit()
 
+def p_error(p):
+    print "Error in input"
+    print p
+    sys.exit()
+
 def strlen(G):
     print "Count:", len(G)
 
@@ -72,7 +79,10 @@ def goutput():
     print "Doing graph output. BRB"
 
 def ginput():
-    print guiInput.main()
+    input = guiInput.main()
+    # print input
+    print json.dumps(json.loads(input), indent=4, sort_keys=True)
+
 
 func_map = {'print' : myprint, 'strlen' : strlen, 'graphene' : {'input' : ginput, 'output' : goutput} }    
     
@@ -158,7 +168,8 @@ def p_expression_name(p):
 
 def p_call(p):
     '''call : ID LPAREN arglist RPAREN
-            | ID DOT ID LPAREN arglist RPAREN '''
+            | ID DOT ID LPAREN arglist RPAREN 
+            | ID DOT ID LPAREN RPAREN '''
     
     if(debug):
         print "call ",len(p)
@@ -166,8 +177,10 @@ def p_call(p):
             print x,
         print ""
     
-    if(len(p) == 6):
+    if(len(p) == 7):
         func_map[p[1]][p[3]](p[5])
+    elif(len(p) == 6):
+        func_map[p[1]][p[3]]()
     else:
         if(p[1] in func_map):
             func_map[p[1]](p[3])
