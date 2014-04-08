@@ -2,7 +2,7 @@ import ply.yacc as yacc
 import ply.lex as lex
 import os, sys
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from vendors import guiInput
+from vendors import gui
 from itertools import chain
 import itertools
 import sys
@@ -77,18 +77,33 @@ def myprint(G):
     print ""
     
 def goutput():
+    # Prints state to D3
+    # Note: state = ALL graphs
+    
     # Dump state to json
-    with open('/proc/state.json', 'w') as outfile:
-        json.dump({"nodes":nodeList, "lastNodeId": len(nodeList)-1, "links": graphList}, outfile)
-    print "Doing graph output. BRB"
+    nodes = []
+    for n in lib.nodeList:
+        nodes.append(n.get_prop())
+
+    graphs = []
+    for g in lib.graphList:
+        graphs.extend(g.get_list()[0])
+
+    if debug:
+        # Nodes and Links converted from IR to json 
+        print "nodes:", nodes
+        print "links:", graphs
+
+    # Dump json to file
+    with open('./proc/state.json', 'w') as outfile:
+        json.dump({"nodes":nodes, "lastNodeId": len(nodes)-1, "links": graphs}, outfile)
+
+    gui.output()
+
 
 def ginput():
     
-    input = guiInput.main()
-    
-    # pretty prints json response
-    if debug:
-        print json.dumps(json.loads(input), indent=4, sort_keys=True)
+    input = gui.input()
     
     input = json.loads(input)
 
@@ -97,12 +112,16 @@ def ginput():
     for k in input['nodes']:
         lib.nodeList.insert(k["id"],lib.Node(k));
 
-    print lib.nodeList
-    print lib.graphList
-    print outToInNodes(input['nodes'])
-    print outToInLinks(input['links'])
+    # pretty prints json response
+    if debug:
+        print lib.nodeList
+        print lib.graphList
+        print outToInNodes(input['nodes'])
+        print outToInLinks(input['links'])
 
-func_map = {'print' : myprint, 'strlen' : strlen, 'graphene' : {'input' : ginput, 'output' : goutput} }   
+    print json.dumps(input, indent=4, sort_keys=True)
+
+func_map = {'input' : ginput, 'output' : goutput,  'print' : myprint, 'strlen' : strlen, 'graphene' : {'input' : ginput, 'output' : goutput }}  
     
 lexer = lex.lex();
 
@@ -187,7 +206,8 @@ def p_expression_name(p):
 def p_call(p):
     '''call : ID LPAREN arglist RPAREN
             | ID DOT ID LPAREN arglist RPAREN 
-            | ID DOT ID LPAREN RPAREN '''
+            | ID DOT ID LPAREN RPAREN
+            | ID LPAREN RPAREN '''
     
     if(debug):
         print "call ",len(p)
@@ -199,6 +219,8 @@ def p_call(p):
         func_map[p[1]][p[3]](p[5])
     elif(len(p) == 6):
         func_map[p[1]][p[3]]()
+    elif(len(p) == 4):
+        func_map[p[1]]()
     else:
         if(p[1] in func_map):
             func_map[p[1]](p[3])

@@ -1,3 +1,5 @@
+import copy
+
 graphList = []
 nodeList = []
 globalNodeIDVal = 0
@@ -9,13 +11,18 @@ class Node:
 	properties = dict()
 	
 	def __init__(self, data = None):
-		id = ++globalNodeIDVal
+		global globalNodeIDVal
+		self.id = globalNodeIDVal + 1
+		globalNodeIDVal = globalNodeIDVal + 1
 		if data is not None:
-			id = data["id"]
-			properties = data	
+			self.id = data["id"]
+			self.properties = dict.copy(data)
 
-	def get_id():
-		return id
+	def get_id(self):
+		return self.id
+
+	def get_prop(self):
+		return self.properties
 
 class Graph:
 # ''' Internal representation of a graph object '''
@@ -24,10 +31,15 @@ class Graph:
     adjList = []
     
     def __init__(self, data = None):
-        id = ++globalGraphIDVal
+    	global globalGraphIDVal
+        self.id = globalGraphIDVal + 1
+        globalGraphIDVal = globalGraphIDVal + 1
         
         if data is not None:
-        	adjList = data
+        	self.adjList.append(data)
 
-    def get_id():
-    	return id
+    def get_id(self):
+    	return self.id
+
+    def get_list(self):
+    	return self.adjList
