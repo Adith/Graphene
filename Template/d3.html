@@ -4,6 +4,12 @@
 <body>
 <div>
     <button id="copy-button"></button>
+    <table id="state-table">
+    	<thead>
+    		<td>ID</td>
+    		<td>Name</td>
+    	</thead>
+    </table>
 </div>
 <script src="javascript/jquery.min.js"></script>
 <script src="javascript/d3.v3.min.js"></script>
@@ -13,8 +19,22 @@
  
 <script type="text/javascript">
 var client, result = {};
+
+function populateStateTable() {
+	var table = document.getElementById("state-table");
+	var row, clmn1, clmn2;
+	$(nodes).each(function(i,e) {
+		row = table.insertRow(-1);
+		clmn1 = row.insertCell(-1);
+		clmn2 = row.insertCell(-1);
+		clmn1.innerHTML = i;
+		clmn2.innerHTML = e["name"];
+	});
+}
+
 $(document).ready(function() {
 
+	populateStateTable();
 	if(window.location.search.substring(1) == "static") {
 		$('#copy-button').text("Exit");
 		$('#copy-button').click(function(){
@@ -63,6 +83,6 @@ client.on( "load", function( readyEvent ) {
 
 </script>
 <link rel="stylesheet" type="text/css" href="css/app.css"/>
-<link rel="stylesheet" type="text/css" href="http://cdnjs.cloudflare.com/ajax/libs/foundation/5.2.1/css/foundation.min.css">
+<link rel="stylesheet" type="text/css" href="css/foundation.min.css">
 </body>
 </html>
