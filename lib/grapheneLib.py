@@ -21,13 +21,38 @@ class Graph:
 # ''' Internal representation of a graph object '''
     id = -1
     
-    adjList = []
+    edgeList = []
     
     def __init__(self, data = None):
         id = ++globalGraphIDVal
         
         if data is not None:
-        	adjList = data
+        	edgeList = data
 
     def get_id():
     	return id
+
+# OO dropped by design choice in favor of python ease of dict use
+# class Edge:
+
+# 	src = -1
+# 	dst = -1
+
+# 	properties = dict()
+
+# 	def __init__(self, srcD = None, dstD = None, data = None):
+# 		if data is not None:
+# 			src = srcD
+# 			dst = dstD
+# 			properties = data
+
+# 	def get_prop():
+# 		return properties
+
+# 	def get_src():
+# 		return src
+
+# 	def get_dst():
+# 		return dst
+
+
