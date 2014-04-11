@@ -12,6 +12,9 @@ import json
 from lib import grapheneLib as lib
 
 debug = 0
+if len(sys.argv) > 1:
+    if sys.argv[1] in ['--debug', '-d']:
+        debug = 1
 
 NumberTypes = (types.IntType, types.LongType, types.FloatType, types.ComplexType)
 
