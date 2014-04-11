@@ -1,27 +1,47 @@
 import ply.yacc as yacc
 import ply.lex as lex
 import os, sys
-
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-
-from vendors import guiInput
+#sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+#from vendors import gui
 from itertools import chain
 import itertools
 import sys
 import types
 import decimal
 import json
-from lib import grapheneLib as lib
+#from lib import grapheneLib as lib
+import ast
+# import symboltable
 
-debug = 0
+debug = 1
+
+ids=dict()
+function=dict()
 
 NumberTypes = (types.IntType, types.LongType, types.FloatType, types.ComplexType)
 
-tokens = ('ID', 'LPAREN', 'RPAREN', 'STRING', 'NUMBER', 'WHITESPACE', 'COMMA', 'Node', 'Edge', 'Graph', 'new', 'NEWLINE', 'DOT')
+tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'WHITESPACE', 'COMMA', 'Node', 'Edge', 'Graph', 'new', 'NEWLINE', 'DOT', 'WHILE')
 literals = [';', '=', '+', '-', '*', '/']
-ids={}
 
-t_ID = r'[a-zA-Z\_][a-zA-Z\_0-9]*'
+RESERVED = {
+  "def": "DEF",
+  "if": "IF",
+  "return": "RETURN",
+  "while": "WHILE"
+  }
+
+def t_ID(t):
+    r'[a-zA-Z\_][a-zA-Z\_0-9]*'
+    t.type = RESERVED.get(t.value, "ID")
+    return t
+
+t_IMPLY = r'=>'
+
+t_CURLBEGIN = r'{'
+
+t_CURLEND = r'}'
+
+#t_ID = r'[a-zA-Z\_][a-zA-Z\_0-9]*'
      
 t_DOT = r'\.'
 
@@ -31,7 +51,7 @@ t_RPAREN = r'\)'
     
 t_STRING = r'\"[a-zA-Z\ 0-9]*\"'
 
-#t_WHITESPACE = r'\s+'
+# t_WHITESPACE = r'\s+'
 
 t_COMMA = r','
 
@@ -69,7 +89,7 @@ def t_error(t):
 
 def p_error(p):
     print "Error in input"
-    print p
+    print p.value
     sys.exit()
 
 def strlen(G):
@@ -77,57 +97,190 @@ def strlen(G):
 
 def myprint(G):
     #print len(G)
-    for x in G:
-        print x,
-        
-    print ""
+    if(debug):
+        print type(G)
+    print G
     
 def goutput():
+    # Prints state to D3
+    # Note: state = ALL graphs
+    
     # Dump state to json
-    with open('/proc/state.json', 'w') as outfile:
-        json.dump({"nodes":nodeList, "lastNodeId": len(nodeList)-1, "links": graphList}, outfile)
-    print "Doing graph output. BRB"
+    nodes = []
+    for n in lib.nodeList:
+        nodes.append(n.get_prop())
+
+    graphs = []
+    for g in lib.graphList:
+        graphs.extend(g.get_list()[0])
+
+    if debug:
+        # Nodes and Links converted from IR to json 
+        print "nodes:", nodes
+        print "links:", graphs
+
+    # Dump json to file
+    with open('./proc/state.json', 'w') as outfile:
+        json.dump({"nodes":nodes, "lastNodeId": len(nodes)-1, "links": graphs}, outfile)
+
+    gui.output()
+
 
 def ginput():
-    
-    input = guiInput.main()
-    
-    # pretty prints json response
-    if debug:
-        print json.dumps(json.loads(input), indent=4, sort_keys=True)
-    
-    input = json.loads(input)
+    print "do nothing"
+##    input = gui.input()
+##    
+##    input = json.loads(input)
+##
+##    lib.graphList.append(lib.Graph(input['links']))
+##
+##    for k in input['nodes']:
+##        lib.nodeList.insert(k["id"],lib.Node(k));
+##
+##    # pretty prints json response
+##    if debug:
+##        print lib.nodeList
+##        print lib.graphList
+##        print outToInNodes(input['nodes'])
+##        print outToInLinks(input['links'])
+##
+##    print json.dumps(input, indent=4, sort_keys=True)
 
-    lib.graphList.append(lib.Graph(input['links']))
-
-    for k in input['nodes']:
-        lib.nodeList.insert(k["id"],lib.Node(k));
-
-    print lib.nodeList
-    print lib.graphList
-    print outToInNodes(input['nodes'])
-    print outToInLinks(input['links'])
-
-func_map = {'print' : myprint, 'strlen' : strlen, 'graphene' : {'input' : ginput, 'output' : goutput}, 'exit' : exit }   
+func_map = {'input' : ginput, 'output' : goutput,  'print' : myprint, 'strlen' : strlen, 'graphene' : {'input' : ginput, 'output' : goutput }}  
     
 lexer = lex.lex();
+#print lexer.tokens()
+
+####################### TO BE MODIFIED ##############################
+
+def p_program(p):
+    '''program : declarationlist'''
+    p[0]=p[1]
+    
+def p_declarations(p):
+    '''declarationlist : declaration declarationlist
+                       | declaration'''
+    p[0]=p[1]
+        
+def p_declaration(p):
+    '''declaration : funcdec'''
+    p[0]= p[1]
+    print evaluateAST(p[0])
+    
+def p_decstatement(p):
+    '''declaration : statement'''
+    p[0]=p[1]
+    print evaluateAST(p[0])
+
+def p_compoundstatement(p):
+    '''statement : compoundstatement'''
+    p[0]=p[1]
+    
+def p_compoundstatementdef(p):
+    '''compoundstatement : CURLBEGIN statementlist CURLEND
+                         | CURLBEGIN CURLEND '''
+    if len(p)==4:
+       p[0] = p[2]
+    else:
+        p[0]=[]
+
+######### function def #########################
+
+def p_funcdef(p):
+    '''funcdec : DEF parameters IMPLY ID compoundstatement'''
+    print "i am here"
+    #funcdef : DEF parameters IMPLY ID CURLBEGIN statementlist CURLEND IMPLY returnlist
+    #p[0] = ast.Function(None, p[2], tuple(p[3]), (), 0, None, p[5])
+    Node = ast.ASTNode()
+    Node.type = 'function-dec'
+    Node.children.append(p[4])
+    Node.children.append(p[5])
+    p[0]=Node
+
+def p_parameters(p):
+    """parameters : LPAREN RPAREN
+                  | LPAREN varargslist RPAREN"""
+    if len(p) == 3:
+        p[0] = []
+    else:
+        p[0] = p[2]
+    
+def p_varargslist(p):
+    """varargslist : varargslist COMMA ID
+                   | ID"""
+    if len(p) == 4:
+        p[0] = p[1] + [p[3]]
+    else:
+        p[0] = [p[1]]
+
+def p_return(p):
+    """returnlist : LPAREN RPAREN
+                  | LPAREN varargslist RPAREN"""
+    if len(p) == 3:
+        p[0] = []
+    else:
+        p[0] = p[2]
+        
+######################################################################
 
 def p_statementlist(p):
     '''statementlist : statement
                      | statement statementlist'''
 
+    p[0]=p[1]
+    if(debug):
+        print type(p[0])
+        ast.printTree(p[0])
+    
+
 def p_statement(p):
-    '''statement : expressionstatement'''
+    '''statement : expressionstatement
+                 | iterationstatement'''
+    if(debug):
+        print "statement"
+    p[0]=p[1]
+    
+    if(debug):
+        print type(p[0])
+
+
+def p_iterationstatement(p):
+   '''iterationstatement : WHILE LPAREN expression RPAREN statement'''
+
+   Node = ast.ASTNode()
+   Node.type = 'while'
+   Node.children.append(p[3])
+   Node.children.append(p[5])
+   p[0]=Node
+
+   if(debug):
+        print "-------In iterationstatement-------"
+        # print "expression: "+ast.printTree(p[3])
+        # print "statement: "+ast.printTree(p[5]
+
 
 def p_expressionstatement(p):
     '''expressionstatement : ';'
-                           | completeexpression ';' '''
+                           | completeexpression ';'  '''
+    if(debug):
+        print "expStatement"
+    if(not (len(p) == 2)):
+        if(debug):
+            print "non empty statement"
+        p[0] = p[1]
+    if(debug):
+        print type(p[0])
 
 def p_expression(p):                       
     '''completeexpression : call
                   | assignmentexpression
                   '''
-
+    if(debug):
+        print "expr"
+    p[0] = p[1]
+    if(debug):
+        print type(p[0])
+                  
 #removed this we are supporting dynamic typing (can introduce later if required)
 
 ##def p_assignmentexpression(p):
@@ -135,9 +288,20 @@ def p_expression(p):
 ##                            | Type ID '=' assignmentexpression'''
 
 def p_assignval(p):
-    "assignmentexpression : ID '=' expression"
-    ids[p[1]] = p[3]
-    print 'assigned ',p[1]
+    '''assignmentexpression : ID '=' expression'''
+    #ids[p[1]] = p[3]
+    node = ast.ASTNode()
+    node.type="assignment"
+    node.children.append(p[1])
+    node.children.append(p[3])
+    p[0] = node
+    
+    if(debug):
+        print "-------In assignExpr-------"
+        ast.printTree(p[0])
+    
+    if(debug):
+        print 'assigned ',p[1]
     
 ##def p_Type(p):
 ##    "Type : primitivetype"
@@ -155,33 +319,64 @@ def p_expression_binop(p):
                   | expression '-' expression
                   | expression '*' expression
                   | expression '/' expression'''
-    print p[1], p[3]
+    if(debug):
+        print p[1], p[3]
     if p[2] == '+' :
-        if isinstance(p[1], decimal.Decimal) and isinstance(p[3], decimal.Decimal):
-            p[0] = p[1] + p[3]
-        else:
-            p[0] = p[1][1:-1] + p[3][1:-1]
-    if isinstance(p[1], NumberTypes) and isinstance(p[3], NumberTypes):
-        if p[2] == '-' : p[0] = p[1] - p[3]
-        elif p[2] == '*' : p[0] = p[1] * p[3]
-        elif p[2] == '/': p[0] = p[1] / p[3]
+        #if isinstance(p[1], decimal.Decimal) and isinstance(p[3], decimal.Decimal):
+            #p[0] = p[1] + p[3]
+            if(debug):
+                print '---sum---'
+            node = ast.ASTNode()
+            node.type = "plus"
+            node.children.append(p[1])
+            node.children.append(p[3])
+            #node.children.append(lambda x,y: x+y)
+            
+            p[0] = node
+        #else:
+           # p[0] = p[1][1:-1] + p[3][1:-1]
+    # if isinstance(p[1], NumberTypes) and isinstance(p[3], NumberTypes):
+    if p[2] == '-' : 
+        if(debug):
+            print '---minus---'
+        node = ast.ASTNode()
+        node.type = "minus"
+        node.children.append(p[1])
+        node.children.append(p[3])
+        #node.children.append(lambda x,y: x+y)
+            
+        p[0] = node
+    elif p[2] == '*' : p[0] = p[1] * p[3]
+    elif p[2] == '/': p[0] = p[1] / p[3]
 
 def p_expression_group(p):
-    "expression : '(' expression ')'"
+    '''expression : '(' expression ')' '''
     p[0] = p[2]
     
 def p_expression_string(p):
-    "expression : STRING"
+    '''expression : STRING'''
     p[0] = p[1]
 
 def p_expression_number(p):
-    "expression : NUMBER"
-    p[0] = p[1]
+    '''expression : NUMBER'''
+    if(debug):
+        print "p_expressionNumber"
+    termNode = ast.ASTNode()
+    termNode.type = "terminal"
+    termNode.value = p[1]
+    p[0] = termNode
+    if(debug):
+        print type(p[0])
 
 def p_expression_name(p):
-    "expression : ID"
+    '''expression : ID'''
     try:
-        p[0] = ids[p[1]]
+        if(debug):
+          print "p_expressionId"
+        node = ast.ASTNode()
+        node.type = "id"
+        node.children.append(p[1])
+        p[0]=node
     except LookupError:
         print("Undefined name '%s'" % p[1])
         p[0] = 0
@@ -193,28 +388,48 @@ def p_expression_name(p):
 def p_call(p):
     '''call : ID LPAREN arglist RPAREN
             | ID DOT ID LPAREN arglist RPAREN 
-            | ID DOT ID LPAREN RPAREN 
-            | ID LPAREN RPAREN'''
-
+            | ID DOT ID LPAREN RPAREN
+            | ID LPAREN RPAREN '''
     
     if(debug):
         print "call ",len(p)
         for x in p:
             print x,
         print ""
+        
+    if(debug):
+        print "p_call"
+    node = ast.ASTNode()
+    node.type = "funccall"
     
-    if(len(p) == 7):
-        func_map[p[1]][p[3]](p[5])
-    elif(len(p) == 6):
-        func_map[p[1]][p[3]]()
-    elif(len(p) == 4):
-        func_map[p[1]]()
-    else:
-        if(p[1] in func_map):
-            func_map[p[1]](p[3])
+    try:
+        if(len(p) == 7):
+            node.children.append(func_map[p[1]][p[3]])
+            node.children.append(p[5])
+            p[0] = node
+        elif(len(p) == 6):
+            node.children.append(func_map[p[1]][p[3]])
+            node.children.append([])
+            p[0] = node
+        elif(len(p) == 4):
+            print('Its a call')
+            try:
+                node.children.append(func_map[p[1]])
+                node.children.append(p[3])
+            except KeyError:
+                node.type="Userdefined"
+                node.children.append(function[p[1]])
+            p[0] = node
         else:
-            print "Function not found. Please replace developer."
-
+            node.children.append(func_map[p[1]])
+            node.children.append(p[3])
+            p[0] = node
+    except:
+        print "Function not found. Please replace developer"
+    if(debug):
+        print type(p[0])
+        
+        
 ##def p_arglist(p):
 ##    '''arglist : idOrString
 ##               | idOrString COMMA arglist
@@ -241,10 +456,31 @@ def p_call(p):
 def p_arg(p):
     '''arglist : idOrString COMMA arglist
                | idOrString'''
+    if(debug):
+        print "arglist"
     if len(p) == 4:
-        p[0] = p[1] + [p[3]]
+        #p[0] = p[1] + [p[3]]
+        pass
     else:
-        p[0] = [p[1]]
+        p[0] = p[1]
+    if(debug):
+        print type(p[0])
+    
+def p_isNumber(p):
+    ''' idOrString : NUMBER '''
+    if(debug):
+        print "idorstr", len(p)
+        for x in p:
+            print x,",",
+        print ""
+    if(debug):
+        print "p_isNumber"
+    termNode = ast.ASTNode()
+    termNode.type = "terminal"
+    termNode.value = p[1]
+    p[0] = termNode
+    if(debug):
+        print type(p[0])
     
 def p_isString(p):
     ''' idOrString : STRING '''
@@ -254,15 +490,31 @@ def p_isString(p):
         for x in p:
             print x,",",
         print ""
-    p[0] = p[1];
+    if(debug):
+        print "p_isString"
+    termNode = ast.ASTNode()
+    termNode.type = "terminal"
+    termNode.value = p[1]
+    p[0] = termNode
+    if(debug):
+        print type(p[0])
 
 def p_isId(p):
     ''' idOrString : ID'''
-    p[0] = ids[p[1]];
+    if(debug):
+        print "idorstr", len(p)
+        for x in p:
+            print x,",",
+        print ""
+    if(debug):
+        print "p_isID"
+    termNode = ast.ASTNode()
+    termNode.type = "id"
+    termNode.value = p[1]
+    p[0] = termNode
+    if(debug):
+        print type(p[0])
     
-def exit():
-    sys.exit(0);
-
 parser = yacc.yacc()
 
 #output format to internal representation
@@ -301,12 +553,109 @@ def inToOutLinks(sources):
 
     return final
 
+def evaluateAST(a):
+    
+    if(debug):
+        print "Evaluating type: ",type(a)
+   
+    if(a.type == "terminal"):
+        if(debug):
+            print "Terminal value",a.value
+        return a
+    
+    if(a.type == "plus"):
+        #return (a.children[2] ( evaluateAST(a.children[0]), evaluateAST(a.children[1]) ))
+        return evaluateAST(a.children[0])+evaluateAST(a.children[1])
+    
+    if(a.type == "minus"):
+        #return (a.children[2] ( evaluateAST(a.children[0]), evaluateAST(a.children[1]) ))
+        node=ast.ASTNode()
+        node.type="terminal"
+        node.value=evaluateAST(a.children[0]).value-evaluateAST(a.children[1]).value;
+        return node
+    
+    if(a.type == "assignment"):
+        print a.children[0], a.children[1]
+        ids[a.children[0]]= evaluateAST(a.children[1]).value
+        print 'Assigned ', ids[a.children[0]], ' to ', a.children[0]
+        return 
+        
+    if(a.type == "funccall"):
+        return a.children[0](evaluateAST(a.children[1]))
 
-while True: 
+    if(a.type == "Userdefined"):
+        print '-----Userdefined----'
+        return evaluateAST(a.children[0])
+    
+    if(a.type == "sequence"):
+        return evaluateAST(a.children[0])
+    
+    if(a.type == "id"):
+        print " in ID"
+        node=ast.ASTNode()
+        node.type="terminal"
+        node.value=ids[a.children[0]]
+        return node
+    
+    if(a.type == "function-dec"):
+        function[a.children[0]]=a.children[1]
+        print 'function ', a.children[0], ' defined, with value ', function[a.children[0]]
 
+    #while loop
+    if(a.type == 'while'):
+        #TODO - change condition to True/False --Pooja
+        if debug:
+            print "evaluateAST of while"
+            print "*********************"
+            print evaluateAST(a.children[0])
+            print "*********************"
+        while (evaluateAST(a.children[0]).value != 0):
+            evaluateAST(a.children[1])
+      
+
+while True:
+    if(0):    
+        n1 = ast.ASTNode()
+        n1.value = 5
+        n1.type = "terminal"
+        
+        n3 = ast.ASTNode()
+        n3.type = "terminal"
+        n3.value = 11
+        
+        n4 = ast.ASTNode()
+        n4.type = "terminal"
+        n4.value = 10
+        
+        n2 = ast.ASTNode()
+        n2.type = "arithmetic"
+        
+        n2.children.append(n3)
+        n2.children.append(n4)
+        def subtract(x,y):
+            print "Subtracting: ",x,y 
+            return x-y
+            
+        n2.children.append(subtract)
+        
+        a = ast.ASTNode()
+        a.type = "arithmetic"
+        a.children.append(n1)
+        a.children.append(n2)
+        
+        def add(x,y):
+            print "Adding: ",x,y 
+            return x+y
+        a.children.append(add)
+
+        print evaluateAST(a)
+    
     try:
         s = raw_input('graphene> ')
     except EOFError:
         break
-    if not s: continue 
-    result = parser.parse(s) 
+    if not s: continue
+    if (not s.lower() == "exit"):
+        result = parser.parse(s) 
+    else:
+        sys.exit()
