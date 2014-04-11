@@ -2,8 +2,15 @@
 <head>
 </head>
 <body>
+<img src="images/logo.png" width="150" style="position: absolute; right: 25px; top:25px;">
 <div>
-    <button id="copy-button">Process</button>
+    <button id="copy-button"></button>
+    <table id="state-table">
+    	<thead>
+    		<td>ID</td>
+    		<td>Name</td>
+    	</thead>
+    </table>
 </div>
 <script src="javascript/jquery.min.js"></script>
 <script src="javascript/d3.v3.min.js"></script>
@@ -13,16 +20,39 @@
  
 <script type="text/javascript">
 var client, result = {};
+
+function populateStateTable() {
+	var table = document.getElementById("state-table");
+	var row, clmn1, clmn2;
+	$(nodes).each(function(i,e) {
+		row = table.insertRow(-1);
+		clmn1 = row.insertCell(-1);
+		clmn2 = row.insertCell(-1);
+		clmn1.innerHTML = i;
+		clmn2.innerHTML = e["name"];
+	});
+}
+
 $(document).ready(function() {
-	client = new ZeroClipboard( document.getElementById("copy-button"), {
+
+	populateStateTable();
+	if(window.location.search.substring(1) == "static") {
+		$('#copy-button').text("Exit");
+		$('#copy-button').click(function(){
+			open(location, '_self').close();
+		});
+	}
+	else {
+		$('#copy-button').text("Process");
+		client = new ZeroClipboard( document.getElementById("copy-button"), {
         moviePath: "images/ZeroClipboard.swf"
     });
 
 client.on( "load", function( readyEvent ) {
 
 	client.on( 'mouseover', function (event) {
-		linksCopy = links;
-		nodesCopy = nodes;
+		linksCopy = JSON.parse(JSON.stringify(links));
+		nodesCopy = JSON.parse(JSON.stringify(nodes));
 
 		$.each(linksCopy, function(index, value){
 			source = value['source']['id'];
@@ -43,16 +73,18 @@ client.on( "load", function( readyEvent ) {
 		result['links'] = linksCopy;
 		console.log(JSON.stringify(result));
   		$('#copy-button').attr('data-clipboard-text', JSON.stringify(result));
-});
+		});
 
-  client.on( "complete", function( event ) {
-    window.close();
-  } );
-} );
-    });
+		client.on( "complete", function( event ) {
+		window.close();
+  });
+});
+}
+});
 
 </script>
 <link rel="stylesheet" type="text/css" href="css/app.css"/>
-<link rel="stylesheet" type="text/css" href="http://cdnjs.cloudflare.com/ajax/libs/foundation/5.2.1/css/foundation.min.css">
+<link rel="stylesheet" type="text/css" href="css/foundation.min.css">
+
 </body>
 </html>

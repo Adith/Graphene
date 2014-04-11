@@ -20,20 +20,15 @@ $.ajax({
   dataType: 'json',
   async: false,
   success: function(data) {
-    console.log(data);
         $.each(data.nodes,function(i,node){
               nodes.push({"id": i, "name": node["name"]});
             });
-            console.log(nodes);
             lastNodeId = data["lastNodeId"];
             $.each(data.links,function(i,link){
               links.push({"source": link["source"], "target": link["target"], "left": link["left"], "right": link["right"], "weight": link["weight"]});
             }); 
           }
 });
-
-console.log(nodes);
-console.log(links);
 
 // init D3 force layout
 var force = d3.layout.force()
@@ -251,6 +246,17 @@ function restart() {
   force.start();
 }
 
+function idIsNew(inputId) {
+  var newNode = true;
+  $(nodes).each(function(i, e){
+    if (Number(e["id"]) == Number(inputId)) {
+      newNode = false;
+    }
+  });
+
+  return newNode == true;
+}
+
 function mousedown() {
   // prevent I-bar on drag
   //d3.event.preventDefault();
@@ -260,13 +266,30 @@ function mousedown() {
 
   if(d3.event.ctrlKey || mousedown_node || mousedown_link) return;
 
-  var name= prompt("Enter node name");
+  
   // insert new node at point
+  var nodeId, input = prompt("If node exists, enter ID");
+  var name= prompt("Name");
+
+  if(!isNaN(input) && input>=0 && input <= lastNodeId && idIsNew(input)) {
+    nodeId = input;
+  }
+  else {
+    nodeId = ++lastNodeId;
+  }
   var point = d3.mouse(this),
-      node = {id: ++lastNodeId, name: name};
+      node = {id: nodeId, name: name};
   node.x = point[0];
   node.y = point[1];
+
   nodes.push(node);
+  var table = document.getElementById("state-table");
+  var row, clmn1, clmn2;
+  row = table.insertRow(-1);
+  clmn1 = row.insertCell(-1);
+  clmn2 = row.insertCell(-1);
+  clmn1.innerHTML = nodeId;
+  clmn2.innerHTML = name;
 
   restart();
 }
@@ -376,9 +399,11 @@ function keyup() {
 }
 
 // app starts here
+if(window.location.search.substring(1) != "static") {
 svg.on('mousedown', mousedown)
   .on('mousemove', mousemove)
   .on('mouseup', mouseup);
+}
 // TD: Reopen this
 // d3.select(window)
 //   .on('keydown', keydown)

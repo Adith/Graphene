@@ -1,8 +1,10 @@
 import ply.yacc as yacc
 import ply.lex as lex
 import os, sys
-#sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-#from vendors import gui
+
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+from vendors import gui
+
 from itertools import chain
 import itertools
 import sys
@@ -17,7 +19,6 @@ debug = 0
 if len(sys.argv) > 1:
     if sys.argv[1] in ['--debug', '-d']:
         debug = 1
-
 
 ids=dict()
 function=dict()
@@ -34,18 +35,11 @@ RESERVED = {
   "while": "WHILE"
   }
 
-def t_ID(t):
-    r'[a-zA-Z\_][a-zA-Z\_0-9]*'
-    t.type = RESERVED.get(t.value, "ID")
-    return t
-
 t_IMPLY = r'=>'
 
 t_CURLBEGIN = r'{'
 
 t_CURLEND = r'}'
-
-#t_ID = r'[a-zA-Z\_][a-zA-Z\_0-9]*'
      
 t_DOT = r'\.'
 
@@ -54,8 +48,6 @@ t_LPAREN = r'\('
 t_RPAREN = r'\)'
     
 t_STRING = r'\"[a-zA-Z\ 0-9]*\"'
-
-# t_WHITESPACE = r'\s+'
 
 t_COMMA = r','
 
@@ -66,6 +58,11 @@ t_Edge = r'Edge'
 t_Graph = r'Graph'
 
 t_new = r'new'
+
+def t_ID(t):
+    r'[a-zA-Z\_][a-zA-Z\_0-9]*'
+    t.type = RESERVED.get(t.value, "ID")
+    return t
 
 def t_newline(t):
     r'\n+'
@@ -100,7 +97,6 @@ def strlen(node):
     print "Count:", len(G)
 
 def myprint(node):
-    #print len(G)
     if(debug):
         print "******print******"
         print type(node)
@@ -132,29 +128,40 @@ def goutput():
 
 
 def ginput():
-    print "do nothing"
-##    input = gui.input()
-##    
-##    input = json.loads(input)
-##
-##    lib.graphList.append(lib.Graph(input['links']))
-##
-##    for k in input['nodes']:
-##        lib.nodeList.insert(k["id"],lib.Node(k));
-##
-##    # pretty prints json response
-##    if debug:
-##        print lib.nodeList
-##        print lib.graphList
-##        print outToInNodes(input['nodes'])
-##        print outToInLinks(input['links'])
-##
-##    print json.dumps(input, indent=4, sort_keys=True)
+    
+    input = gui.input()
+    
+    input = json.loads(input)
+
+    # Dump json to file
+    with open('./proc/state.json', 'w') as outfile:
+        json.dump({"nodes":nodes, "lastNodeId": len(nodes)-1, "links": graphs}, outfile)
+
+    gui.output()
+
+
+def ginput():
+   input = gui.input()
+   
+   input = json.loads(input)
+
+   lib.graphList.append(lib.Graph(input['links']))
+
+   for k in input['nodes']:
+       lib.nodeList.insert(k["id"],lib.Node(k));
+
+   # pretty prints json response
+   if debug:
+       print lib.nodeList
+       print lib.graphList
+       print outToInNodes(input['nodes'])
+       print outToInLinks(input['links'])
+
+   print json.dumps(input, indent=4, sort_keys=True)
 
 func_map = {'input' : ginput, 'output' : goutput,  'print' : myprint, 'strlen' : strlen, 'graphene' : {'input' : ginput, 'output' : goutput }}  
     
 lexer = lex.lex();
-#print lexer.tokens()
 
 ####################### TO BE MODIFIED ##############################
 
@@ -442,6 +449,7 @@ def p_call(p):
                 node.type="Userdefined"
                 node.children.append(function[p[1]])
             p[0] = node
+            
         else:
             if debug:
                 print('****call****')
