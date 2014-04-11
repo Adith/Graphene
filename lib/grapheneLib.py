@@ -36,7 +36,7 @@ class Graph:
         globalGraphIDVal = globalGraphIDVal + 1
         
         if data is not None:
-       		self.adjList.extend(data)
+       		self.edgeList.extend(data)
 
     def get_id(self):
     	return self.id

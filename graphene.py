@@ -11,7 +11,7 @@ import sys
 import types
 import decimal
 import json
-#from lib import grapheneLib as lib
+from lib import grapheneLib as lib
 import ast
 # import symboltable
 
@@ -126,19 +126,15 @@ def goutput():
 
     gui.output()
 
-
-def ginput():
-    
-    input = gui.input()
-    
-    input = json.loads(input)
-
-    # Dump json to file
-    with open('./proc/state.json', 'w') as outfile:
-        json.dump({"nodes":nodes, "lastNodeId": len(nodes)-1, "links": graphs}, outfile)
-
-    gui.output()
-
+# ___________           ___
+# \__    ___/___     __| _/____  
+#   |    | /  _ \   / __ |/  _ \ 
+#   |    |(  <_> ) / /_/ (  <_> )
+#   |____| \____/  \____ |\____/ 
+#                       \/       
+#
+#  Add default values for nodes in gui
+#
 
 def ginput():
    input = gui.input()
@@ -159,7 +155,17 @@ def ginput():
 
    print json.dumps(input, indent=4, sort_keys=True)
 
-func_map = {'input' : ginput, 'output' : goutput,  'print' : myprint, 'strlen' : strlen, 'graphene' : {'input' : ginput, 'output' : goutput }}  
+
+#
+#   To Do:
+#   Graceful Cleanup
+#
+
+
+def gexit():
+    sys.exit(0)
+
+func_map = {'input' : ginput, 'output' : goutput,  'print' : myprint, 'strlen' : strlen, 'exit': gexit}  
     
 lexer = lex.lex();
 
@@ -441,18 +447,19 @@ def p_call(p):
             p[0] = node
         elif(len(p) == 4):
             try:
-                print "****inbuilt****"
+                if debug:
+                    print "****inbuilt****"
                 node.children.append(func_map[p[1]])
-                node.children.append(p[3])
             except KeyError:
-                print "****Userdefined****"
+                if debug:
+                    print "****Userdefined****"
                 node.type="Userdefined"
                 node.children.append(function[p[1]])
             p[0] = node
-            
+
         else:
             if debug:
-                print('****call****')
+                print "****call****"
             node.children.append(func_map[p[1]])
             node.children.append(p[3])
             p[0] = node
@@ -629,7 +636,10 @@ def evaluateAST(a):
     if(a.type == "funccall"):
         if debug:
             print '-----call----'
-        return a.children[0](evaluateAST(a.children[1]))
+        if len(a.children)>1:
+            return a.children[0](evaluateAST(a.children[1]))
+        else:
+            return a.children[0]()
 
     if(a.type == "Userdefined"):
         print '-----Userdefined----'
