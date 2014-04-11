@@ -13,7 +13,11 @@ import json
 import ast
 # import symboltable
 
-debug = 1
+debug = 0
+if len(sys.argv) > 1:
+    if sys.argv[1] in ['--debug', '-d']:
+        debug = 1
+
 
 ids=dict()
 function=dict()
@@ -92,14 +96,15 @@ def p_error(p):
     print p.value
     sys.exit()
 
-def strlen(G):
+def strlen(node):
     print "Count:", len(G)
 
-def myprint(G):
+def myprint(node):
     #print len(G)
     if(debug):
-        print type(G)
-    print G
+        print "******print******"
+        print type(node)
+    print node.value
     
 def goutput():
     # Prints state to D3
@@ -165,12 +170,12 @@ def p_declarations(p):
 def p_declaration(p):
     '''declaration : funcdec'''
     p[0]= p[1]
-    print evaluateAST(p[0])
+    evaluateAST(p[0])
     
 def p_decstatement(p):
     '''declaration : statement'''
     p[0]=p[1]
-    print evaluateAST(p[0])
+    evaluateAST(p[0])
 
 def p_compoundstatement(p):
     '''statement : compoundstatement'''
@@ -322,19 +327,14 @@ def p_expression_binop(p):
     if(debug):
         print p[1], p[3]
     if p[2] == '+' :
-        #if isinstance(p[1], decimal.Decimal) and isinstance(p[3], decimal.Decimal):
-            #p[0] = p[1] + p[3]
-            if(debug):
-                print '---sum---'
-            node = ast.ASTNode()
-            node.type = "plus"
-            node.children.append(p[1])
-            node.children.append(p[3])
-            #node.children.append(lambda x,y: x+y)
-            
-            p[0] = node
-        #else:
-           # p[0] = p[1][1:-1] + p[3][1:-1]
+        if(debug):
+            print '---sum---'
+        node = ast.ASTNode()
+        node.type = "plus"
+        node.children.append(p[1])
+        node.children.append(p[3])
+        p[0] = node
+
     # if isinstance(p[1], NumberTypes) and isinstance(p[3], NumberTypes):
     if p[2] == '-' : 
         if(debug):
@@ -343,11 +343,25 @@ def p_expression_binop(p):
         node.type = "minus"
         node.children.append(p[1])
         node.children.append(p[3])
-        #node.children.append(lambda x,y: x+y)
-            
         p[0] = node
-    elif p[2] == '*' : p[0] = p[1] * p[3]
-    elif p[2] == '/': p[0] = p[1] / p[3]
+
+    elif p[2] == '*' : 
+        if(debug):
+            print '---multiply---'
+        node = ast.ASTNode()
+        node.type = "multiply"
+        node.children.append(p[1])
+        node.children.append(p[3])
+        p[0] = node
+
+    elif p[2] == '/':
+        if(debug):
+            print '---divide---'
+        node = ast.ASTNode()
+        node.type = "divide"
+        node.children.append(p[1])
+        node.children.append(p[3])
+        p[0] = node
 
 def p_expression_group(p):
     '''expression : '(' expression ')' '''
@@ -355,7 +369,14 @@ def p_expression_group(p):
     
 def p_expression_string(p):
     '''expression : STRING'''
-    p[0] = p[1]
+    if(debug):
+        print "p_expressionString"
+    termNode = ast.ASTNode()
+    termNode.type = "terminal"
+    termNode.value = p[1][1:-1]
+    p[0] = termNode
+    if(debug):
+        print type(p[0])
 
 def p_expression_number(p):
     '''expression : NUMBER'''
@@ -412,15 +433,18 @@ def p_call(p):
             node.children.append([])
             p[0] = node
         elif(len(p) == 4):
-            print('Its a call')
             try:
+                print "****inbuilt****"
                 node.children.append(func_map[p[1]])
                 node.children.append(p[3])
             except KeyError:
+                print "****Userdefined****"
                 node.type="Userdefined"
                 node.children.append(function[p[1]])
             p[0] = node
         else:
+            if debug:
+                print('****call****')
             node.children.append(func_map[p[1]])
             node.children.append(p[3])
             p[0] = node
@@ -494,7 +518,7 @@ def p_isString(p):
         print "p_isString"
     termNode = ast.ASTNode()
     termNode.type = "terminal"
-    termNode.value = p[1]
+    termNode.value = p[1][1:-1]
     p[0] = termNode
     if(debug):
         print type(p[0])
@@ -510,7 +534,7 @@ def p_isId(p):
         print "p_isID"
     termNode = ast.ASTNode()
     termNode.type = "id"
-    termNode.value = p[1]
+    termNode.children.append(p[1])
     p[0] = termNode
     if(debug):
         print type(p[0])
@@ -564,23 +588,39 @@ def evaluateAST(a):
         return a
     
     if(a.type == "plus"):
-        #return (a.children[2] ( evaluateAST(a.children[0]), evaluateAST(a.children[1]) ))
-        return evaluateAST(a.children[0])+evaluateAST(a.children[1])
+        node=ast.ASTNode()
+        node.type="terminal"
+        node.value=evaluateAST(a.children[0]).value+evaluateAST(a.children[1]).value;
+        return node
     
     if(a.type == "minus"):
-        #return (a.children[2] ( evaluateAST(a.children[0]), evaluateAST(a.children[1]) ))
         node=ast.ASTNode()
         node.type="terminal"
         node.value=evaluateAST(a.children[0]).value-evaluateAST(a.children[1]).value;
         return node
     
+    if(a.type == "multiply"):
+        node=ast.ASTNode()
+        node.type="terminal"
+        node.value=evaluateAST(a.children[0]).value*evaluateAST(a.children[1]).value;
+        return node
+
+    if(a.type == "divide"):
+        node=ast.ASTNode()
+        node.type="terminal"
+        node.value=evaluateAST(a.children[0]).value/evaluateAST(a.children[1]).value;
+        return node
+
     if(a.type == "assignment"):
-        print a.children[0], a.children[1]
+        if debug:
+            print a.children[0], a.children[1]
         ids[a.children[0]]= evaluateAST(a.children[1]).value
         print 'Assigned ', ids[a.children[0]], ' to ', a.children[0]
         return 
         
     if(a.type == "funccall"):
+        if debug:
+            print '-----call----'
         return a.children[0](evaluateAST(a.children[1]))
 
     if(a.type == "Userdefined"):
@@ -591,7 +631,6 @@ def evaluateAST(a):
         return evaluateAST(a.children[0])
     
     if(a.type == "id"):
-        print " in ID"
         node=ast.ASTNode()
         node.type="terminal"
         node.value=ids[a.children[0]]
@@ -648,7 +687,7 @@ while True:
             return x+y
         a.children.append(add)
 
-        print evaluateAST(a)
+        evaluateAST(a)
     
     try:
         s = raw_input('graphene> ')
