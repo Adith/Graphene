@@ -1,3 +1,7 @@
+# TODO
+# Error handling - exit table
+
+
 import ply.yacc as yacc
 import ply.lex as lex
 import os, sys
@@ -25,14 +29,15 @@ function=dict()
 
 NumberTypes = (types.IntType, types.LongType, types.FloatType, types.ComplexType)
 
-tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'WHITESPACE', 'COMMA', 'Node', 'Edge', 'Graph', 'new', 'NEWLINE', 'DOT', 'WHILE')
+tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'WHITESPACE', 'COMMA', 'Node', 'Edge', 'Graph', 'new', 'NEWLINE', 'DOT', 'WHILE', 'HAS', 'COLON')
 literals = [';', '=', '+', '-', '*', '/']
 
 RESERVED = {
   "def": "DEF",
   "if": "IF",
   "return": "RETURN",
-  "while": "WHILE"
+  "while": "WHILE",
+  "has": "HAS"
   }
 
 t_IMPLY = r'=>'
@@ -42,6 +47,8 @@ t_CURLBEGIN = r'{'
 t_CURLEND = r'}'
      
 t_DOT = r'\.'
+
+t_COLON = r':'
 
 t_LPAREN = r'\('
 
@@ -181,9 +188,48 @@ def p_declarations(p):
     p[0]=p[1]
         
 def p_declaration(p):
-    '''declaration : funcdec'''
+    '''declaration : funcdec
+                   | vardec'''
     p[0]= p[1]
     evaluateAST(p[0])
+
+def p_vardec(p):
+    '''vardec : node'''
+    p[0] = p[1]
+    if debug:
+        print "----- variable declaration ------"
+
+def p_node(p):
+    '''node : ID HAS keylist'''
+    #Note - keylist implies parameters
+
+    if debug:
+        print "Node declaration"
+    node = ast.ASTNode()
+    node.type = 'node-dec'
+    node.children.append(p[1])
+    node.children.append(p[3])
+    p[0] = node
+
+
+def p_keylist(p):
+    '''keylist : idOrAlphanum COLON idOrAlphanum
+               | idOrAlphanum COLON idOrAlphanum COMMA keylist'''
+
+    if debug:
+        print "Node declaration keylist"
+
+    p[0] = {}
+    p[0][p[1]] = p[3]
+    if len(p) == 5:
+        if p[1] in p[5].keys():
+            print "Same property name for node."
+            system.exit(-200)
+
+        for k,v in p[5].items():
+            p[0][k] = v
+
+
     
 def p_decstatement(p):
     '''declaration : statement'''
@@ -206,7 +252,6 @@ def p_compoundstatementdef(p):
 
 def p_funcdef(p):
     '''funcdec : DEF parameters IMPLY ID compoundstatement'''
-    print "i am here"
     #funcdef : DEF parameters IMPLY ID CURLBEGIN statementlist CURLEND IMPLY returnlist
     #p[0] = ast.Function(None, p[2], tuple(p[3]), (), 0, None, p[5])
     Node = ast.ASTNode()
@@ -377,7 +422,7 @@ def p_expression_binop(p):
         p[0] = node
 
 def p_expression_group(p):
-    '''expression : '(' expression ')' '''
+    '''expression : LPAREN expression RPAREN '''
     p[0] = p[2]
     
 def p_expression_string(p):
@@ -470,8 +515,8 @@ def p_call(p):
         
         
 ##def p_arglist(p):
-##    '''arglist : idOrString
-##               | idOrString COMMA arglist
+##    '''arglist : idOrAlphanum
+##               | idOrAlphanum COMMA arglist
 ##               | '''
 ##    if(debug):
 ##        print "arglist ", len(p), p[0],p[1]
@@ -493,8 +538,8 @@ def p_call(p):
 ##    #itertools.repeat(x,1) if isinstance(x,str) else x for x in items
 
 def p_arg(p):
-    '''arglist : idOrString COMMA arglist
-               | idOrString'''
+    '''arglist : idOrAlphanum COMMA arglist
+               | idOrAlphanum'''
     if(debug):
         print "arglist"
     if len(p) == 4:
@@ -506,7 +551,7 @@ def p_arg(p):
         print type(p[0])
     
 def p_isNumber(p):
-    ''' idOrString : NUMBER '''
+    ''' idOrAlphanum : NUMBER '''
     if(debug):
         print "idorstr", len(p)
         for x in p:
@@ -522,7 +567,7 @@ def p_isNumber(p):
         print type(p[0])
     
 def p_isString(p):
-    ''' idOrString : STRING '''
+    ''' idOrAlphanum : STRING '''
                    
     if(debug):
         print "idorstr", len(p)
@@ -539,7 +584,7 @@ def p_isString(p):
         print type(p[0])
 
 def p_isId(p):
-    ''' idOrString : ID'''
+    ''' idOrAlphanum : ID'''
     if(debug):
         print "idorstr", len(p)
         for x in p:
