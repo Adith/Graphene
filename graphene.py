@@ -1,6 +1,13 @@
-# TODO
-# Error handling - exit table
+#! /usr/bin/env python
+# -*- coding: UTF-8 -*-
 
+# ████████╗ ██████╗     ██████╗  ██████╗ 
+# ╚══██╔══╝██╔═══██╗    ██╔══██╗██╔═══██╗
+#    ██║   ██║   ██║    ██║  ██║██║   ██║
+#    ██║   ██║   ██║    ██║  ██║██║   ██║
+#    ██║   ╚██████╔╝    ██████╔╝╚██████╔╝
+#    ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝ 
+# Error handling - exit table
 
 import ply.yacc as yacc
 import ply.lex as lex
@@ -17,12 +24,16 @@ import decimal
 import json
 from lib import grapheneLib as lib
 import ast
+import logging
 # import symboltable
 
 debug = 0
+logger = logging.getLogger()
 if len(sys.argv) > 1:
     if sys.argv[1] in ['--debug', '-d']:
-        debug = 1
+        logger.setLevel(logging.DEBUG)
+    elif sys.argv[1] in ['--info', '-i']:
+        logger.setLevel(logging.INFO)
 
 ids=dict()
 function=dict()
@@ -104,9 +115,8 @@ def strlen(node):
     print "Count:", len(G)
 
 def myprint(node):
-    if(debug):
-        print "******print******"
-        print type(node)
+    logging.debug('******print******')
+    logging.debug(type(node))
     print node.value
     
 def goutput():
@@ -122,10 +132,9 @@ def goutput():
     for g in lib.graphList:
         graphs.extend(g.get_list()[0])
 
-    if debug:
-        # Nodes and Links converted from IR to json 
-        print "nodes:", nodes
-        print "links:", graphs
+    # Nodes and Links converted from IR to json 
+    logging.debug("nodes:", str(nodes))
+    logging.debug("links:", str(graphs))
 
     # Dump json to file
     with open('./proc/state.json', 'w') as outfile:
@@ -144,23 +153,22 @@ def goutput():
 #
 
 def ginput():
-   input = gui.input()
+    input = gui.input()
    
-   input = json.loads(input)
+    input = json.loads(input)
 
-   lib.graphList.append(lib.Graph(input['links']))
+    lib.graphList.append(lib.Graph(input['links']))
 
-   for k in input['nodes']:
+    for k in input['nodes']:
        lib.nodeList.insert(k["id"],lib.Node(k));
 
    # pretty prints json response
-   if debug:
-       print lib.nodeList
-       print lib.graphList
-       print outToInNodes(input['nodes'])
-       print outToInLinks(input['links'])
+    logging.debug(lib.nodeList)
+    logging.debug(lib.graphList)
+    logging.debug(outToInNodes(input['nodes']))
+    logging.debug(outToInLinks(input['links']))
 
-   print json.dumps(input, indent=4, sort_keys=True)
+    print json.dumps(input, indent=4, sort_keys=True)
 
 
 #
@@ -195,16 +203,17 @@ def p_declaration(p):
 
 def p_vardec(p):
     '''vardec : node'''
+    logging.debug("----- variable declaration ------")
+
     p[0] = p[1]
-    if debug:
-        print "----- variable declaration ------"
+    
 
 def p_node(p):
     '''node : ID HAS keylist'''
     #Note - keylist implies parameters
 
-    if debug:
-        print "Node declaration"
+    logging.debug("Node declaration")
+
     node = ast.ASTNode()
     node.type = 'node-dec'
     node.children.append(p[1])
@@ -216,14 +225,13 @@ def p_keylist(p):
     '''keylist : idOrAlphanum COLON idOrAlphanum
                | idOrAlphanum COLON idOrAlphanum COMMA keylist'''
 
-    if debug:
-        print "Node declaration keylist"
+    logging.debug("Node declaration keylist")
 
     p[0] = {}
     p[0][p[1]] = p[3]
     if len(p) == 5:
         if p[1] in p[5].keys():
-            print "Same property name for node."
+            logging.critical("Same property name for node.")
             system.exit(-200)
 
         for k,v in p[5].items():
@@ -291,58 +299,49 @@ def p_statementlist(p):
                      | statement statementlist'''
 
     p[0]=p[1]
-    if(debug):
-        print type(p[0])
-        ast.printTree(p[0])
+    
+    logging.debug(type(p[0]))
+    logging.debug(ast.printTree(p[0]))
     
 
 def p_statement(p):
     '''statement : expressionstatement
                  | iterationstatement'''
-    if(debug):
-        print "statement"
-    p[0]=p[1]
     
-    if(debug):
-        print type(p[0])
+    logging.debug("statement")
+    
+    p[0]=p[1]
 
 
 def p_iterationstatement(p):
-   '''iterationstatement : WHILE LPAREN expression RPAREN statement'''
+    '''iterationstatement : WHILE LPAREN expression RPAREN statement'''
 
-   Node = ast.ASTNode()
-   Node.type = 'while'
-   Node.children.append(p[3])
-   Node.children.append(p[5])
-   p[0]=Node
+    Node = ast.ASTNode()
+    Node.type = 'while'
+    Node.children.append(p[3])
+    Node.children.append(p[5])
+    p[0]=Node
 
-   if(debug):
-        print "-------In iterationstatement-------"
-        # print "expression: "+ast.printTree(p[3])
-        # print "statement: "+ast.printTree(p[5]
-
+    logging.debug("-------In iterationstatement-------")
 
 def p_expressionstatement(p):
     '''expressionstatement : ';'
                            | completeexpression ';'  '''
-    if(debug):
-        print "expStatement"
+    
+    logging.debug("expStatement")
+
     if(not (len(p) == 2)):
-        if(debug):
-            print "non empty statement"
+        logging.debug("non empty statement")
         p[0] = p[1]
-    if(debug):
-        print type(p[0])
+        logging.debug(type(p[0]))
 
 def p_expression(p):                       
     '''completeexpression : call
                   | assignmentexpression
                   '''
-    if(debug):
-        print "expr"
+    logging.debug("expr")
     p[0] = p[1]
-    if(debug):
-        print type(p[0])
+    logging.debug(type(p[0]))
                   
 #removed this we are supporting dynamic typing (can introduce later if required)
 
@@ -359,12 +358,10 @@ def p_assignval(p):
     node.children.append(p[3])
     p[0] = node
     
-    if(debug):
-        print "-------In assignExpr-------"
-        ast.printTree(p[0])
+    logging.debug("-------In assignExpr-------")
+    logging.debug(ast.printTree(p[0]))
     
-    if(debug):
-        print 'assigned ',p[1]
+    logging.info('assigned '+str(p[1]))
     
 ##def p_Type(p):
 ##    "Type : primitivetype"
@@ -382,11 +379,11 @@ def p_expression_binop(p):
                   | expression '-' expression
                   | expression '*' expression
                   | expression '/' expression'''
-    if(debug):
-        print p[1], p[3]
+
+    logging.debug(str(p[1])+str(p[3]))
+
     if p[2] == '+' :
-        if(debug):
-            print '---sum---'
+        logging.debug('---sum---')
         node = ast.ASTNode()
         node.type = "plus"
         node.children.append(p[1])
@@ -395,8 +392,7 @@ def p_expression_binop(p):
 
     # if isinstance(p[1], NumberTypes) and isinstance(p[3], NumberTypes):
     if p[2] == '-' : 
-        if(debug):
-            print '---minus---'
+        logging.debug('---minus---')
         node = ast.ASTNode()
         node.type = "minus"
         node.children.append(p[1])
@@ -404,8 +400,7 @@ def p_expression_binop(p):
         p[0] = node
 
     elif p[2] == '*' : 
-        if(debug):
-            print '---multiply---'
+        logging.debug('---multiply---')
         node = ast.ASTNode()
         node.type = "multiply"
         node.children.append(p[1])
@@ -413,8 +408,7 @@ def p_expression_binop(p):
         p[0] = node
 
     elif p[2] == '/':
-        if(debug):
-            print '---divide---'
+        logging.debug('---divide---')
         node = ast.ASTNode()
         node.type = "divide"
         node.children.append(p[1])
@@ -427,37 +421,32 @@ def p_expression_group(p):
     
 def p_expression_string(p):
     '''expression : STRING'''
-    if(debug):
-        print "p_expressionString"
+    logging.debug("p_expressionString")
     termNode = ast.ASTNode()
     termNode.type = "terminal"
     termNode.value = p[1][1:-1]
     p[0] = termNode
-    if(debug):
-        print type(p[0])
+    logging.debug(type(p[0]))
 
 def p_expression_number(p):
     '''expression : NUMBER'''
-    if(debug):
-        print "p_expressionNumber"
+    logging.debug("p_expressionNumber")
     termNode = ast.ASTNode()
     termNode.type = "terminal"
     termNode.value = p[1]
     p[0] = termNode
-    if(debug):
-        print type(p[0])
+    logging.debug(type(p[0]))
 
 def p_expression_name(p):
     '''expression : ID'''
     try:
-        if(debug):
-          print "p_expressionId"
+        logging.debug("p_expressionId")
         node = ast.ASTNode()
         node.type = "id"
         node.children.append(p[1])
         p[0]=node
     except LookupError:
-        print("Undefined name '%s'" % p[1])
+        logging.error(str("Undefined name '%s'" % p[1]))
         p[0] = 0
 
 #################################
@@ -470,14 +459,11 @@ def p_call(p):
             | ID DOT ID LPAREN RPAREN
             | ID LPAREN RPAREN '''
     
-    if(debug):
-        print "call ",len(p)
-        for x in p:
-            print x,
-        print ""
+    logging.debug("call")
+    for x in p:
+        logging.debug(x)
         
-    if(debug):
-        print "p_call"
+    logging.debug("p_call")
     node = ast.ASTNode()
     node.type = "funccall"
     
@@ -492,37 +478,28 @@ def p_call(p):
             p[0] = node
         elif(len(p) == 4):
             try:
-                if debug:
-                    print "****inbuilt****"
+                logging.debug("****inbuilt****")
                 node.children.append(func_map[p[1]])
             except KeyError:
-                if debug:
-                    print "****Userdefined****"
+                logging.debug("****Userdefined****")
                 node.type="Userdefined"
                 node.children.append(function[p[1]])
             p[0] = node
 
         else:
-            if debug:
-                print "****call****"
+            logging.debug("****call****")
             node.children.append(func_map[p[1]])
             node.children.append(p[3])
             p[0] = node
     except:
-        print "Function not found. Please replace developer"
-    if(debug):
-        print type(p[0])
+        logging.error("Function not found. Please replace developer")
+        logging.debug(type(p[0]))
         
         
 ##def p_arglist(p):
 ##    '''arglist : idOrAlphanum
 ##               | idOrAlphanum COMMA arglist
 ##               | '''
-##    if(debug):
-##        print "arglist ", len(p), p[0],p[1]
-##        for x in p:
-##            print x,",",
-##        print ""
 ##        
 ##    arglist = []
 ##    i=1
@@ -540,64 +517,54 @@ def p_call(p):
 def p_arg(p):
     '''arglist : idOrAlphanum COMMA arglist
                | idOrAlphanum'''
-    if(debug):
-        print "arglist"
+    logging.debug("arglist")
     if len(p) == 4:
         #p[0] = p[1] + [p[3]]
         pass
     else:
         p[0] = p[1]
-    if(debug):
-        print type(p[0])
+    logging.debug(type(p[0]))
     
 def p_isNumber(p):
     ''' idOrAlphanum : NUMBER '''
-    if(debug):
-        print "idorstr", len(p)
-        for x in p:
-            print x,",",
-        print ""
-    if(debug):
-        print "p_isNumber"
+    
+    logging.debug("idorstr"+ str(len(p)))
+    for x in p:
+        logging.debug(x)  
+    logging.debug("p_isNumber")
+    
     termNode = ast.ASTNode()
     termNode.type = "terminal"
     termNode.value = p[1]
     p[0] = termNode
-    if(debug):
-        print type(p[0])
+    logging.debug(type(p[0]))
     
 def p_isString(p):
     ''' idOrAlphanum : STRING '''
                    
-    if(debug):
-        print "idorstr", len(p)
-        for x in p:
-            print x,",",
-        print ""
-    if(debug):
-        print "p_isString"
+    logging.debug("idorstr"+str(len(p)))
+    for x in p:
+        logging.debug(x)
+    logging.debug("p_isString")
+
     termNode = ast.ASTNode()
     termNode.type = "terminal"
     termNode.value = p[1][1:-1]
     p[0] = termNode
-    if(debug):
-        print type(p[0])
+    logging.debug(type(p[0]))
 
 def p_isId(p):
     ''' idOrAlphanum : ID'''
-    if(debug):
-        print "idorstr", len(p)
-        for x in p:
-            print x,",",
-        print ""
-    if(debug):
-        print "p_isID"
+    logging.debug("idorstr"+str(len(p)))
+    for x in p:
+        logging.debug(x)
+    logging.debug("p_isID")
+    
     termNode = ast.ASTNode()
     termNode.type = "id"
     termNode.children.append(p[1])
     p[0] = termNode
-    if(debug):
-        print type(p[0])
+    logging.debug(type(p[0]))
     
 parser = yacc.yacc()
 
@@ -639,12 +606,10 @@ def inToOutLinks(sources):
 
 def evaluateAST(a):
     
-    if(debug):
-        print "Evaluating type: ",type(a)
+    logging.debug("Evaluating type: "+str(type(a)))
    
     if(a.type == "terminal"):
-        if(debug):
-            print "Terminal value",a.value
+        logging.debug("Terminal value: "+str(a.value))
         return a
     
     if(a.type == "plus"):
@@ -672,22 +637,21 @@ def evaluateAST(a):
         return node
 
     if(a.type == "assignment"):
-        if debug:
-            print a.children[0], a.children[1]
+        logging.debug(a.children[0])
+        logging.debug(a.children[1])
         ids[a.children[0]]= evaluateAST(a.children[1]).value
-        print 'Assigned ', ids[a.children[0]], ' to ', a.children[0]
+        logging.info('Assigned '+str(ids[a.children[0]])+' to '+str(a.children[0]))
         return 
         
     if(a.type == "funccall"):
-        if debug:
-            print '-----call----'
+        logging.debug('-----call----')
         if len(a.children)>1:
             return a.children[0](evaluateAST(a.children[1]))
         else:
             return a.children[0]()
 
     if(a.type == "Userdefined"):
-        print '-----Userdefined----'
+        logging.debug('-----Userdefined----')
         return evaluateAST(a.children[0])
     
     if(a.type == "sequence"):
@@ -696,7 +660,11 @@ def evaluateAST(a):
     if(a.type == "id"):
         node=ast.ASTNode()
         node.type="terminal"
-        node.value=ids[a.children[0]]
+        try:
+            node.value=ids[a.children[0]]
+        except KeyError, e:
+            logging.critical("Unknown variable: '"+str(a.children[0])+"'")
+            sys.exit(-1)
         return node
     
     if(a.type == "function-dec"):
@@ -706,11 +674,10 @@ def evaluateAST(a):
     #while loop
     if(a.type == 'while'):
         #TODO - change condition to True/False --Pooja
-        if debug:
-            print "evaluateAST of while"
-            print "*********************"
-            print evaluateAST(a.children[0])
-            print "*********************"
+        logging.debug("evaluateAST of while")
+        logging.debug("*********************")
+        logging.debug(evaluateAST(a.children[0]))
+        logging.debug("*********************")
         while (evaluateAST(a.children[0]).value != 0):
             evaluateAST(a.children[1])
       
