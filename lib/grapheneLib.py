@@ -11,6 +11,7 @@ import copy
 
 graphList = []
 nodeList = []
+
 globalNodeIDVal = 0
 globalGraphIDVal = 0
 
@@ -21,10 +22,12 @@ class Node:
 	
 	def __init__(self, data = None):
 		global globalNodeIDVal
-		self.id = globalNodeIDVal + 1
-		globalNodeIDVal = globalNodeIDVal + 1
 		if data is not None:
-			self.id = data["id"]
+			try:
+				self.id = data["id"]
+			except KeyError, e:
+				self.id = globalNodeIDVal + 1
+				globalNodeIDVal = globalNodeIDVal + 1
 			self.properties = dict.copy(data)
 
 	def get_id(self):
@@ -33,11 +36,15 @@ class Node:
 	def get_prop(self):
 		return self.properties
 
+	def print_data(self):
+		for k,v in self.properties.items():
+			print "\t",k,":",v
+
 class Graph:
 # ''' Internal representation of a graph object '''
     id = -1
     
-    edgeList = []
+    edgeList = {}
     
     def __init__(self, data = None):
     	global globalGraphIDVal
@@ -52,6 +59,11 @@ class Graph:
 
     def get_list(self):
     	return self.edgeList
+
+    # Print to console
+    def print_data(self):
+    	print edgeList
+
 
 # OO dropped by design choice in favor of python ease of dict use
 # class Edge:

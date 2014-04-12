@@ -23,11 +23,11 @@ import types
 import decimal
 import json
 from lib import grapheneLib as lib
+from collections import namedtuple
 import ast
 import logging
 # import symboltable
 
-debug = 0
 logger = logging.getLogger()
 if len(sys.argv) > 1:
     if sys.argv[1] in ['--debug', '-d']:
@@ -40,7 +40,7 @@ function=dict()
 
 NumberTypes = (types.IntType, types.LongType, types.FloatType, types.ComplexType)
 
-tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'WHITESPACE', 'COMMA', 'NODE', 'EDGE', 'GRAPH', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'HAS', 'COLON')
+tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'WHITESPACE', 'COMMA', 'NODE', 'EDGE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'HAS', 'ON', 'COLON')
 literals = [';', '=', '+', '-', '*', '/']
 
 RESERVED = {
@@ -49,9 +49,14 @@ RESERVED = {
   "return": "RETURN",
   "while": "WHILE",
   "has": "HAS",
+  "on": "ON",
   "Node": "NODE",
   "Graph": "GRAPH",
-  "Edge": "EDGE"
+  "Edge": "EDGE",
+  "d": "GRAPHTYPE",
+  "u": "GRAPHTYPE",
+  "->": "CONNECTOR",
+  "<->": "CONNECTOR"
   }
 
 t_IMPLY = r'=>'
@@ -120,9 +125,30 @@ def strlen(node):
 
 def myprint(node):
     logging.debug('******print******')
-    logging.debug(type(node))
-    print node.value
-    
+    logging.debug(node.type)
+    if isinstance(node.value, lib.Node):
+        print "Node", "has"
+        node.value.print_data();
+    elif node.type == 'terminal':
+        print node.value
+
+# ████████╗ ██████╗     ██████╗  ██████╗ 
+# ╚══██╔══╝██╔═══██╗    ██╔══██╗██╔═══██╗
+#    ██║   ██║   ██║    ██║  ██║██║   ██║
+#    ██║   ██║   ██║    ██║  ██║██║   ██║
+#    ██║   ╚██████╔╝    ██████╔╝╚██████╔╝
+#    ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝ 
+# Graph to be displayed visually. Global nodelist has to be 
+# size limited to only the nodes in the specified graph
+
+def goutput(graph_name):
+    # Displays graph visually
+    return
+
+def goutput(graph_name, graph_nodes):
+    # Displays graph on console
+    return
+
 def goutput():
     # Prints state to D3
     # Note: state = ALL graphs
@@ -215,42 +241,103 @@ def p_declaration(p):
     evaluateAST(p[0])
 
 def p_vardec(p):
-    '''vardec : NODE node-dec'''
+    '''vardec : node-dec ';'
+              | graph-dec '''
     logging.debug("----- variable declaration ------")
 
     p[0] = p[1]
     
-
 def p_node(p):
-    '''node-dec : ID HAS keylist'''
+    '''node-dec : NODE ID HAS keylist'''
     #Note - keylist implies parameters
 
     logging.debug("----- Node declaration -----")
 
     node = ast.ASTNode()
     node.type = 'node-dec'
-    node.children.append(p[1])
-    node.children.append(p[3])
+
+    child1 = ast.ASTNode()
+    child1.value = p[2]
+    child2 = ast.ASTNode()
+    child2.value = p[4]
+
+    node.children.append(child1)
+    node.children.append(child2)
     p[0] = node
 
-
 def p_keylist(p):
-    '''keylist : idOrAlphanum COLON idOrAlphanum
-               | idOrAlphanum COLON idOrAlphanum COMMA keylist'''
+    '''keylist : idOrAlphanum
+               | idOrAlphanum COMMA keylist'''
 
     logging.debug("----- Node declaration keylist -----")
 
+    p[0] = []
+    if p[1].type == "id":
+        p[0].append(p[1].children[0])
+    else:
+        p[0].append(p[1].value)
+    if len(p) == 4:
+        if p[1] in p[3]:
+            logging.critical("Same property name for node.")
+            system.exit(-1)
+        
+        p[0] += p[3]
+
+def p_graph(p):
+    '''graph-dec : GRAPH ID HAS GRAPHTYPE CURLBEGIN edgelist CURLEND
+                 | GRAPH ID HAS GRAPHTYPE CURLBEGIN edgelist CURLEND ON idOrAlphanum '''
+
+    logging.debug("----- Graph declaration -----")
+
+    node = ast.ASTNode()
+    node.type = 'graph-dec'
+
+    gid = ast.ASTNode()
+    gid.value = p[2]
+    gtype = ast.ASTNode()
+    gtype.value = p[4]
+    edges = ast.ASTNode()
+    edges.value = p[6]
+
+    key = ast.ASTNode()
+    key.value = "id"
+
+    if(len(p) == 10):
+        key.value = p[9]
+
+    node.children.append(gid)
+    node.children.append(gtype)
+    node.children.append(edges)
+    node.children.append(key)
+
+    p[0] = node
+
+#
+#  ████████╗ ██████╗     ██████╗  ██████╗ 
+#  ╚══██╔══╝██╔═══██╗    ██╔══██╗██╔═══██╗
+#     ██║   ██║   ██║    ██║  ██║██║   ██║
+#     ██║   ██║   ██║    ██║  ██║██║   ██║
+#     ██║   ╚██████╔╝    ██████╔╝╚██████╔╝
+#     ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝ 
+#
+#   Parse node ids to check if node exists
+#
+
+def p_edgelist(p):
+    '''edgelist :  CONNECTOR idOrAlphanum
+               | idOrAlphanum CONNECTOR idOrAlphanum COMMA edgelist'''
+
+    logging.debug("----- Graph declaration keylist -----")
+
     p[0] = {}
-    p[0][p[1]] = p[3]
-    if len(p) == 5:
+    p[0][p[1].value] = p[3].value
+    if len(p) == 6:
         if p[1] in p[5].keys():
             logging.critical("Same property name for node.")
             system.exit(-200)
 
         for k,v in p[5].items():
             p[0][k] = v
-
-
     
 def p_decstatement(p):
     '''declaration : statement'''
@@ -313,7 +400,7 @@ def p_statementlist(p):
 
     p[0]=p[1]
     
-    logging.debug(type(p[0]))
+    logging.debug(p[0].type)
     logging.debug(ast.printTree(p[0]))
     
 
@@ -346,7 +433,7 @@ def p_expressionstatement(p):
     if(not (len(p) == 2)):
         logging.debug("non empty statement")
         p[0] = p[1]
-        logging.debug(type(p[0]))
+        logging.debug(p[0].type)
 
 def p_expression(p):                       
     '''completeexpression : call
@@ -354,7 +441,7 @@ def p_expression(p):
                   '''
     logging.debug("expr")
     p[0] = p[1]
-    logging.debug(type(p[0]))
+    logging.debug(p[0].type)
                   
 #removed this we are supporting dynamic typing (can introduce later if required)
 
@@ -363,7 +450,8 @@ def p_expression(p):
 ##                            | Type ID '=' assignmentexpression'''
 
 def p_assignval(p):
-    '''assignmentexpression : ID '=' expression'''
+    '''assignmentexpression : ID '=' expression
+                            | ID '=' call '''
     #ids[p[1]] = p[3]
     node = ast.ASTNode()
     node.type="assignment"
@@ -439,7 +527,7 @@ def p_expression_string(p):
     termNode.type = "terminal"
     termNode.value = p[1][1:-1]
     p[0] = termNode
-    logging.debug(type(p[0]))
+    logging.debug(p[0].type)
 
 def p_expression_number(p):
     '''expression : NUMBER'''
@@ -448,7 +536,7 @@ def p_expression_number(p):
     termNode.type = "terminal"
     termNode.value = p[1]
     p[0] = termNode
-    logging.debug(type(p[0]))
+    logging.debug(p[0].type)
 
 def p_expression_name(p):
     '''expression : ID'''
@@ -482,31 +570,30 @@ def p_call(p):
     
     try:
         if(len(p) == 7):
-            node.children.append(func_map[p[1]][p[3]])
+            node.children.append(func_map[[p[1]][p[3]]])
             node.children.append(p[5])
             p[0] = node
         elif(len(p) == 6):
             node.children.append(func_map[p[1]][p[3]])
             node.children.append([])
             p[0] = node
-        elif(len(p) == 4):
+        else:
             try:
                 logging.debug("****inbuilt****")
                 node.children.append(func_map[p[1]])
+            
             except KeyError:
-                logging.debug("****Userdefined****")
-                node.type="Userdefined"
+                logging.debug("****userdefined****")
                 node.children.append(function[p[1]])
+        
+            if(len(p) == 5):
+                logging.debug("****func_arg****")
+                node.children.append(p[3])
             p[0] = node
 
-        else:
-            logging.debug("****call****")
-            node.children.append(func_map[p[1]])
-            node.children.append(p[3])
-            p[0] = node
     except:
         logging.error("Function not found. Please replace developer")
-        logging.debug(type(p[0]))
+        logging.debug(p[0])
         
         
 ##def p_arglist(p):
@@ -531,12 +618,17 @@ def p_arg(p):
     '''arglist : idOrAlphanum COMMA arglist
                | idOrAlphanum'''
     logging.debug("arglist")
+
+    listNode = ast.ASTNode()
+    listNode.type = "list"
+
     if len(p) == 4:
-        #p[0] = p[1] + [p[3]]
-        pass
+        listNode.value = [p[1].value] + p[3].value
     else:
-        p[0] = p[1]
-    logging.debug(type(p[0]))
+        listNode.value = [p[1].value]
+
+    p[0] = listNode
+    logging.debug(p[0].type)
     
 def p_isNumber(p):
     ''' idOrAlphanum : NUMBER '''
@@ -550,12 +642,12 @@ def p_isNumber(p):
     termNode.type = "terminal"
     termNode.value = p[1]
     p[0] = termNode
-    logging.debug(type(p[0]))
+    logging.debug(p[0].type)
     
 def p_isString(p):
     ''' idOrAlphanum : STRING '''
                    
-    logging.debug("idorstr"+str(len(p)))
+    logging.debug("idorstr "+str(len(p)))
     for x in p:
         logging.debug(x)
     logging.debug("p_isString")
@@ -564,11 +656,11 @@ def p_isString(p):
     termNode.type = "terminal"
     termNode.value = p[1][1:-1]
     p[0] = termNode
-    logging.debug(type(p[0]))
+    logging.debug(p[0].type)
 
 def p_isId(p):
     ''' idOrAlphanum : ID'''
-    logging.debug("idorstr"+str(len(p)))
+    logging.debug("idorstr "+str(len(p)))
     for x in p:
         logging.debug(x)
     logging.debug("p_isID")
@@ -577,7 +669,7 @@ def p_isId(p):
     termNode.type = "id"
     termNode.children.append(p[1])
     p[0] = termNode
-    logging.debug(type(p[0]))
+    logging.debug(p[0].type)
     
 parser = yacc.yacc()
 
@@ -619,11 +711,15 @@ def inToOutLinks(sources):
 
 def evaluateAST(a):
     
-    logging.debug("Evaluating type: "+str(type(a)))
+    logging.debug("Evaluating type: "+str(a.type))
    
     if(a.type == "terminal"):
         logging.debug("Terminal value: "+str(a.value))
         return a
+
+    if(a.type == "list"):
+        logging.debug("List value: "+str(a.value))
+        return a    
     
     if(a.type == "plus"):
         node=ast.ASTNode()
@@ -657,15 +753,15 @@ def evaluateAST(a):
         return 
         
     if(a.type == "funccall"):
-        logging.debug('-----call----')
+        logging.debug('-----eval: call----')
+
         if len(a.children)>1:
-            return a.children[0](evaluateAST(a.children[1]))
+            if(a.children[1].type == "list"):
+                return a.children[0](*evaluateAST(a.children[1]).value)
+            else:
+                return a.children[0](evaluateAST(a.children[1]))
         else:
             return a.children[0]()
-
-    if(a.type == "Userdefined"):
-        logging.debug('-----Userdefined----')
-        return evaluateAST(a.children[0])
     
     if(a.type == "sequence"):
         return evaluateAST(a.children[0])
@@ -680,6 +776,22 @@ def evaluateAST(a):
             sys.exit(-1)
         return node
     
+    if(a.type == "node-dec"):
+        logging.debug('-----eval: node-dec----')
+        new_node_class = namedtuple(a.children[0].value, a.children[1].value)
+        function[a.children[0].value] = new_node_class
+
+        print new_node_class
+        return
+
+    if(a.type == "graph-dec"):
+        logging.debug('-----eval: graph-dec----')
+        new_graph = lib.Graph(a.children[1].value)
+        ids[a.children[0].value] = new_graph
+
+        new_graph.print_data()
+        return
+
     if(a.type == "function-dec"):
         function[a.children[0]]=a.children[1]
         print 'function ', a.children[0], ' defined, with value ', function[a.children[0]]
