@@ -40,7 +40,7 @@ function=dict()
 
 NumberTypes = (types.IntType, types.LongType, types.FloatType, types.ComplexType)
 
-tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'WHITESPACE', 'COMMA', 'Node', 'Edge', 'Graph', 'new', 'NEWLINE', 'DOT', 'WHILE', 'HAS', 'COLON')
+tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'WHITESPACE', 'COMMA', 'NODE', 'EDGE', 'GRAPH', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'HAS', 'COLON')
 literals = [';', '=', '+', '-', '*', '/']
 
 RESERVED = {
@@ -48,7 +48,10 @@ RESERVED = {
   "if": "IF",
   "return": "RETURN",
   "while": "WHILE",
-  "has": "HAS"
+  "has": "HAS",
+  "Node": "NODE",
+  "Graph": "GRAPH",
+  "Edge": "EDGE"
   }
 
 t_IMPLY = r'=>'
@@ -69,17 +72,18 @@ t_STRING = r'\"[a-zA-Z\ 0-9]*\"'
 
 t_COMMA = r','
 
-t_Node = r'Node'
+t_NODE = r'Node'
 
-t_Edge = r'Edge'
+t_EDGE = r'Edge'
 
-t_Graph = r'Graph'
+t_GRAPH = r'Graph'
 
-t_new = r'new'
+t_NEW = r'new'
 
 def t_ID(t):
     r'[a-zA-Z\_][a-zA-Z\_0-9]*'
     t.type = RESERVED.get(t.value, "ID")
+    logging.debug("----- TOKEN: ID - "+t.type+" ------")
     return t
 
 def t_newline(t):
@@ -107,8 +111,8 @@ def t_error(t):
     sys.exit()
 
 def p_error(p):
-    print "Error in input"
-    print p.value
+    logging.error("Error in input")
+    logging.error(p.value)
     sys.exit()
 
 def strlen(node):
@@ -142,15 +146,15 @@ def goutput():
 
     gui.output()
 
-# ___________           ___
-# \__    ___/___     __| _/____  
-#   |    | /  _ \   / __ |/  _ \ 
-#   |    |(  <_> ) / /_/ (  <_> )
-#   |____| \____/  \____ |\____/ 
-#                       \/       
 #
-#  Add default values for nodes in gui
+#  ████████╗ ██████╗     ██████╗  ██████╗ 
+#  ╚══██╔══╝██╔═══██╗    ██╔══██╗██╔═══██╗
+#     ██║   ██║   ██║    ██║  ██║██║   ██║
+#     ██║   ██║   ██║    ██║  ██║██║   ██║
+#     ██║   ╚██████╔╝    ██████╔╝╚██████╔╝
+#     ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝ 
 #
+# Add default values for nodes in gui
 
 def ginput():
     input = gui.input()
@@ -172,7 +176,13 @@ def ginput():
 
 
 #
-#   To Do:
+#  ████████╗ ██████╗     ██████╗  ██████╗ 
+#  ╚══██╔══╝██╔═══██╗    ██╔══██╗██╔═══██╗
+#     ██║   ██║   ██║    ██║  ██║██║   ██║
+#     ██║   ██║   ██║    ██║  ██║██║   ██║
+#     ██║   ╚██████╔╝    ██████╔╝╚██████╔╝
+#     ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝ 
+#
 #   Graceful Cleanup
 #
 
@@ -188,31 +198,34 @@ lexer = lex.lex();
 
 def p_program(p):
     '''program : declarationlist'''
+    logging.debug("----- program ------")
     p[0]=p[1]
     
 def p_declarations(p):
     '''declarationlist : declaration declarationlist
                        | declaration'''
+    logging.debug("----- declaration list ------")
     p[0]=p[1]
         
 def p_declaration(p):
     '''declaration : funcdec
                    | vardec'''
+    logging.debug("----- declaration ------")
     p[0]= p[1]
     evaluateAST(p[0])
 
 def p_vardec(p):
-    '''vardec : node'''
+    '''vardec : NODE node-dec'''
     logging.debug("----- variable declaration ------")
 
     p[0] = p[1]
     
 
 def p_node(p):
-    '''node : ID HAS keylist'''
+    '''node-dec : ID HAS keylist'''
     #Note - keylist implies parameters
 
-    logging.debug("Node declaration")
+    logging.debug("----- Node declaration -----")
 
     node = ast.ASTNode()
     node.type = 'node-dec'
@@ -225,7 +238,7 @@ def p_keylist(p):
     '''keylist : idOrAlphanum COLON idOrAlphanum
                | idOrAlphanum COLON idOrAlphanum COMMA keylist'''
 
-    logging.debug("Node declaration keylist")
+    logging.debug("----- Node declaration keylist -----")
 
     p[0] = {}
     p[0][p[1]] = p[3]
