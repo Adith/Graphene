@@ -85,6 +85,10 @@ t_GRAPH = r'Graph'
 
 t_NEW = r'new'
 
+t_CONNECTOR = r'<?->'
+
+t_GRAPHTYPE = r'(d|u){1}'
+
 def t_ID(t):
     r'[a-zA-Z\_][a-zA-Z\_0-9]*'
     t.type = RESERVED.get(t.value, "ID")
@@ -128,8 +132,11 @@ def myprint(*node):
 
     for e in node:
 
-        if type(e).__bases__[0].__name__ in ["Node","Graph"]:
-            print type(e).__bases__[0].__name__, "has"
+        if type(e).__bases__[0].__name__ in ["Node"]:
+            print "Node has"
+            e.print_data();
+        elif isinstance(e, lib.Graph):
+            print "Graph has"
             e.print_data();
         else:
             print e
@@ -244,7 +251,7 @@ def p_declaration(p):
 
 def p_vardec(p):
     '''vardec : node-dec ';'
-              | graph-dec '''
+              | graph-dec ';' '''
     logging.debug("----- variable declaration ------")
 
     p[0] = p[1]
@@ -295,13 +302,15 @@ def p_graph(p):
     node.type = 'graph-dec'
 
     gid = ast.ASTNode()
+    gid.type = "id"
     gid.value = p[2]
     gtype = ast.ASTNode()
+    gtype.type = "terminal"
     gtype.value = p[4]
-    edges = ast.ASTNode()
-    edges.value = p[6]
+    edges = p[6]
 
     key = ast.ASTNode()
+    key.type = "terminal"
     key.value = "id"
 
     if(len(p) == 10):
@@ -309,8 +318,8 @@ def p_graph(p):
 
     node.children.append(gid)
     node.children.append(gtype)
-    node.children.append(edges)
     node.children.append(key)
+    node.children.append(p[6])
 
     p[0] = node
 
@@ -326,20 +335,28 @@ def p_graph(p):
 #
 
 def p_edgelist(p):
-    '''edgelist :  CONNECTOR idOrAlphanum
-               | idOrAlphanum CONNECTOR idOrAlphanum COMMA edgelist'''
+    '''edgelist : idOrAlphanum CONNECTOR idOrAlphanum
+                | idOrAlphanum CONNECTOR idOrAlphanum COMMA edgelist
+                | idOrAlphanum CONNECTOR idOrAlphanum LPAREN arglist RPAREN
+                | idOrAlphanum CONNECTOR idOrAlphanum LPAREN arglist RPAREN COMMA edgelist'''
 
     logging.debug("----- Graph declaration keylist -----")
 
-    p[0] = {}
-    p[0][p[1].value] = p[3].value
-    if len(p) == 6:
-        if p[1] in p[5].keys():
-            logging.critical("Same property name for node.")
-            system.exit(-200)
+    edgelist = ast.ASTNode()
+    edgelist.type = "edgelist"
 
-        for k,v in p[5].items():
-            p[0][k] = v
+    edgelist.children.append(p[1])
+    edgelist.children.append(p[2])
+    edgelist.children.append(p[3])
+
+    if len(p) == 6:
+        edgelist.children.append(None)
+    if len(p) > 4:
+        edgelist.children.append(p[5])
+    if len(p) > 7:
+        edgelist.children.append(p[8])
+    
+    p[0] = edgelist
     
 def p_decstatement(p):
     '''declaration : statement'''
@@ -572,7 +589,7 @@ def p_call(p):
         if(len(p) == 7):
             node.children.append(func_map[[p[1]][p[3]]])
             child = ast.ASTNode()
-            child.type = 'list'
+            child.type = 'arglist'
             child.value = p[5]
             node.children.append(child)
             p[0] = node
@@ -592,7 +609,7 @@ def p_call(p):
             if(len(p) == 5):
                 logging.debug("****func_arg****")
                 child = ast.ASTNode()
-                child.type = 'list'
+                child.type = 'arglist'
                 child.value = p[3]
                 node.children.append(child)
             p[0] = node
@@ -623,23 +640,18 @@ def p_call(p):
 def p_arg(p):
     '''arglist : idOrAlphanum COMMA arglist
                | idOrAlphanum'''
+    
     logging.debug("arglist")
 
-    listNode = ast.ASTNode()
-    listNode.type = "list"
+    arglistNode = ast.ASTNode()
+    arglistNode.type = "arglist"
 
-    if len(p) == 4:
-        if p[1].type == 'id':
-            listNode.value = [ids[p[1].children[0]]] + p[3].value
-        else:
-            listNode.value = [p[1].value] + p[3].value
-    else:
-        if p[1].type == 'id':
-            listNode.value = [ids[p[1].children[0]]]
-        else:
-            listNode.value = [p[1].value]
+    arglistNode.children.append(p[1])
 
-    p[0] = listNode
+    if len(p) > 2:
+        arglistNode.children.append(p[3].children[0])
+
+    p[0] = arglistNode
     logging.debug(p[0].type)
     
 def p_isNumber(p):
@@ -728,10 +740,35 @@ def evaluateAST(a):
     if(a.type == "terminal"):
         logging.debug("Terminal value: "+str(a.value))
         return a
+    
+    if(a.type == "edgelist"):
+        a.value = {}
+        child_edge_list = {}
+        child_edge_list_attr = {}
+        child_edge_list_attr["__connector__"] = a.children[1]
+        child_edge_list[a.children[2].value] = child_edge_list_attr
+        a.value[a.children[0].value] = child_edge_list
 
-    if(a.type == "list"):
-        logging.debug("List value: "+str(a.value.value))
+        if len(a.children) != 3:
+            if a.children[3] != None:
+                for i,e in enumerate(evaluateAST(a.children[3]).value):
+                    child_edge_list_attr[i] = e
+        
+        if len(a.children) == 5:
+            for k,v in evaluateAST(a.children[4]).iteritems():
+                if k in a.value.keys():
+                    for k1,v1 in v.iteritems():
+                        a.value[k][k1] = v1
+                a.value[k] = v
         return a.value
+
+    if(a.type == "arglist"):
+        logging.debug("------argList-----")
+        a.value = []
+        
+        for e in a.children:
+            a.value.append(evaluateAST(e).value)
+        return a
     
     if(a.type == "plus"):
         node=ast.ASTNode()
@@ -771,11 +808,11 @@ def evaluateAST(a):
             print "node"
 
         if len(a.children)>1:
-            if(a.children[1].type == "list"):
+            if(a.children[1].type == "arglist"):
                 node=ast.ASTNode()
                 node.type="terminal"
                 args = []
-                node.value=a.children[0](*evaluateAST(a.children[1]).value)
+                node.value=a.children[0](*evaluateAST(a.children[1].value).value)
                 return node
             else:
                 node=ast.ASTNode()
@@ -809,10 +846,11 @@ def evaluateAST(a):
 
     if(a.type == "graph-dec"):
         logging.debug('-----eval: graph-dec----')
-        new_graph = lib.Graph(a.children[1].value)
+        
+        new_graph = lib.Graph(evaluateAST(a.children[1]), evaluateAST(a.children[2]), evaluateAST(a.children[3]))
         ids[a.children[0].value] = new_graph
 
-        new_graph.print_data()
+        # new_graph.print_data()
         return
 
     if(a.type == "function-dec"):
@@ -831,42 +869,6 @@ def evaluateAST(a):
       
 
 while True:
-    if(0):    
-        n1 = ast.ASTNode()
-        n1.value = 5
-        n1.type = "terminal"
-        
-        n3 = ast.ASTNode()
-        n3.type = "terminal"
-        n3.value = 11
-        
-        n4 = ast.ASTNode()
-        n4.type = "terminal"
-        n4.value = 10
-        
-        n2 = ast.ASTNode()
-        n2.type = "arithmetic"
-        
-        n2.children.append(n3)
-        n2.children.append(n4)
-        def subtract(x,y):
-            print "Subtracting: ",x,y 
-            return x-y
-            
-        n2.children.append(subtract)
-        
-        a = ast.ASTNode()
-        a.type = "arithmetic"
-        a.children.append(n1)
-        a.children.append(n2)
-        
-        def add(x,y):
-            print "Adding: ",x,y 
-            return x+y
-        a.children.append(add)
-
-        evaluateAST(a)
-    
     try:
         s = raw_input('graphene> ')
     except EOFError:

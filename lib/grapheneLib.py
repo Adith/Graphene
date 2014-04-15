@@ -16,10 +16,6 @@ nodeList = []
 globalLastNodeIDVal = 0
 globalLastGraphIDVal = 0
 
-# class Node(namedtuple('Node', ['value', 'left', 'right'])):
-#     def __new__(cls, value=None, left=None, right=None):
-#         return super(Node, cls).__new__(cls, value, left, right)
-
 class Node(object):
 	'''Internal representation of the node type'''
 	def print_data(child):
@@ -43,49 +39,33 @@ def node_init(self, *args):
 	Node().inc_id(self)
 
 class Graph:
-# ''' Internal representation of a graph object '''
-    id = -1
-    
-    edgeList = {}
+	''' Internal representation of a graph object '''
+	id = -1
+	
+	edgeList = {}
+	
+	def __init__(self, gtype = 'u', gkey = "id", edgeList = None):
+		global globalLastGraphIDVal
+		
+		self.id = globalLastGraphIDVal + 1
+		globalLastGraphIDVal = globalLastGraphIDVal + 1
+		
+		if edgeList is not None:
+			self.edgeList = dict.copy(edgeList)
 
-    def __init__(self, data = None):
-    	global globalGraphIDVal
-        self.id = globalGraphIDVal + 1
-        globalGraphIDVal = globalGraphIDVal + 1
-        
-        if data is not None:
-       		self.edgeList.extend(data)
+	def get_id(self):
+		return self.id
 
-    def get_id(self):
-    	return self.id
+	def get_list(self):
+		return self.edgeList
 
-    def get_list(self):
-    	return self.edgeList
-
-    # Print to console
-    def print_data(self):
-    	print edgeList
-
-
-# OO dropped by design choice in favor of python ease of dict use
-# class Edge:
-
-# 	src = -1
-# 	dst = -1
-
-# 	properties = dict()
-
-# 	def __init__(self, srcD = None, dstD = None, data = None):
-# 		if data is not None:
-# 			src = srcD
-# 			dst = dstD
-# 			properties = data
-
-# 	def get_prop():
-# 		return properties
-
-# 	def get_src():
-# 		return src
-
-# 	def get_dst():
-# 		return dst
+	# Print to console
+	def print_data(self):
+		for k,v in self.edgeList.iteritems():
+			print '\tNode(',k,')', 
+			for k1,v1 in v.iteritems():
+				print v1["__connector__"],'Node(',k1,')'
+				for k2,v2 in v1.iteritems():
+					if k2 in ["__connector__"]:
+						continue
+					print "\t\t",k2,':',v2
