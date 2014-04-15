@@ -1,51 +1,53 @@
 # -*- coding: UTF-8 -*-
 
-# ██╗     ██╗██████╗ 
-# ██║     ██║██╔══██╗
-# ██║     ██║██████╔╝
-# ██║     ██║██╔══██╗
-# ███████╗██║██████╔╝
-# ╚══════╝╚═╝╚═════╝ 
-                   
+ # ██╗     ██╗██████╗ 
+ # ██║     ██║██╔══██╗
+ # ██║     ██║██████╔╝
+ # ██║     ██║██╔══██╗
+ # ███████╗██║██████╔╝
+ # ╚══════╝╚═╝╚═════╝ 
+
 import copy
+from collections import namedtuple
 
 graphList = []
 nodeList = []
 
-globalNodeIDVal = 0
-globalGraphIDVal = 0
+globalLastNodeIDVal = 0
+globalLastGraphIDVal = 0
 
-class Node:
-# ''' Internal representation of a node object '''
-	id = -1
-	properties = dict()
+# class Node(namedtuple('Node', ['value', 'left', 'right'])):
+#     def __new__(cls, value=None, left=None, right=None):
+#         return super(Node, cls).__new__(cls, value, left, right)
+
+class Node(object):
+	'''Internal representation of the node type'''
+	def print_data(child):
+		print "\tid : ",child.id
+		for k,v in child.mapping.iteritems():
+			print "\t", v, ":", getattr(child, v)
 	
-	def __init__(self, data = None):
-		global globalNodeIDVal
-		if data is not None:
-			try:
-				self.id = data["id"]
-			except KeyError, e:
-				self.id = globalNodeIDVal + 1
-				globalNodeIDVal = globalNodeIDVal + 1
-			self.properties = dict.copy(data)
+	id = -1
 
-	def get_id(self):
-		return self.id
+	def inc_id(self, child):
+		global globalLastNodeIDVal
+		child.id = globalLastNodeIDVal + 1
+		globalLastNodeIDVal = globalLastNodeIDVal + 1
 
-	def get_prop(self):
-		return self.properties
 
-	def print_data(self):
-		for k,v in self.properties.items():
-			print "\t",k,":",v
+def node_init(self, *args):
+	for k,v in self.mapping.iteritems():
+		if k > len(args)-1:
+			break
+		setattr(self,v,args[k])
+	Node().inc_id(self)
 
 class Graph:
 # ''' Internal representation of a graph object '''
     id = -1
     
     edgeList = {}
-    
+
     def __init__(self, data = None):
     	global globalGraphIDVal
         self.id = globalGraphIDVal + 1

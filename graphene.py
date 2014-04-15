@@ -50,7 +50,7 @@ RESERVED = {
   "while": "WHILE",
   "has": "HAS",
   "on": "ON",
-  "Node": "NODE",
+  "NodeType": "NODE",
   "Graph": "GRAPH",
   "Edge": "EDGE",
   "d": "GRAPHTYPE",
@@ -123,14 +123,16 @@ def p_error(p):
 def strlen(node):
     print "Count:", len(G)
 
-def myprint(node):
+def myprint(*node):
     logging.debug('******print******')
-    logging.debug(node.type)
-    if isinstance(node.value, lib.Node):
-        print "Node", "has"
-        node.value.print_data();
-    elif node.type == 'terminal':
-        print node.value
+
+    for e in node:
+
+        if type(e).__bases__[0].__name__ in ["Node","Graph"]:
+            print type(e).__bases__[0].__name__, "has"
+            e.print_data();
+        else:
+            print e
 
 # ████████╗ ██████╗     ██████╗  ██████╗ 
 # ╚══██╔══╝██╔═══██╗    ██╔══██╗██╔═══██╗
@@ -460,8 +462,6 @@ def p_assignval(p):
     p[0] = node
     
     logging.debug("-------In assignExpr-------")
-    logging.debug(ast.printTree(p[0]))
-    
     logging.info('assigned '+str(p[1]))
     
 ##def p_Type(p):
@@ -571,7 +571,10 @@ def p_call(p):
     try:
         if(len(p) == 7):
             node.children.append(func_map[[p[1]][p[3]]])
-            node.children.append(p[5])
+            child = ast.ASTNode()
+            child.type = 'list'
+            child.value = p[5]
+            node.children.append(child)
             p[0] = node
         elif(len(p) == 6):
             node.children.append(func_map[p[1]][p[3]])
@@ -588,7 +591,10 @@ def p_call(p):
         
             if(len(p) == 5):
                 logging.debug("****func_arg****")
-                node.children.append(p[3])
+                child = ast.ASTNode()
+                child.type = 'list'
+                child.value = p[3]
+                node.children.append(child)
             p[0] = node
 
     except:
@@ -623,9 +629,15 @@ def p_arg(p):
     listNode.type = "list"
 
     if len(p) == 4:
-        listNode.value = [p[1].value] + p[3].value
+        if p[1].type == 'id':
+            listNode.value = [ids[p[1].children[0]]] + p[3].value
+        else:
+            listNode.value = [p[1].value] + p[3].value
     else:
-        listNode.value = [p[1].value]
+        if p[1].type == 'id':
+            listNode.value = [ids[p[1].children[0]]]
+        else:
+            listNode.value = [p[1].value]
 
     p[0] = listNode
     logging.debug(p[0].type)
@@ -718,8 +730,8 @@ def evaluateAST(a):
         return a
 
     if(a.type == "list"):
-        logging.debug("List value: "+str(a.value))
-        return a    
+        logging.debug("List value: "+str(a.value.value))
+        return a.value
     
     if(a.type == "plus"):
         node=ast.ASTNode()
@@ -755,13 +767,26 @@ def evaluateAST(a):
     if(a.type == "funccall"):
         logging.debug('-----eval: call----')
 
+        if a.children[0] in function:
+            print "node"
+
         if len(a.children)>1:
             if(a.children[1].type == "list"):
-                return a.children[0](*evaluateAST(a.children[1]).value)
+                node=ast.ASTNode()
+                node.type="terminal"
+                args = []
+                node.value=a.children[0](*evaluateAST(a.children[1]).value)
+                return node
             else:
-                return a.children[0](evaluateAST(a.children[1]))
+                node=ast.ASTNode()
+                node.type="terminal"
+                node.value=a.children[0](evaluateAST(a.children[1]))
+                return node
         else:
-            return a.children[0]()
+            node=ast.ASTNode()
+            node.type="terminal"
+            node.value=a.children[0]()
+            return node
     
     if(a.type == "sequence"):
         return evaluateAST(a.children[0])
@@ -778,10 +803,8 @@ def evaluateAST(a):
     
     if(a.type == "node-dec"):
         logging.debug('-----eval: node-dec----')
-        new_node_class = namedtuple(a.children[0].value, a.children[1].value)
+        new_node_class = type(a.children[0].value, (lib.Node,), dict(((el,None) for i,el in enumerate(a.children[1].value)),__init__=lib.node_init, print_data=lambda self:lib.Node.print_data(self),mapping=dict((i,el) for i,el in enumerate(a.children[1].value))))
         function[a.children[0].value] = new_node_class
-
-        print new_node_class
         return
 
     if(a.type == "graph-dec"):
