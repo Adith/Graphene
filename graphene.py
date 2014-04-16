@@ -225,7 +225,11 @@ def ginput():
 def gexit():
     sys.exit(0)
 
-func_map = {'input' : ginput, 'output' : goutput,  'print' : myprint, 'strlen' : strlen, 'exit': gexit}  
+def get_data(e):
+    ''' Used for debugging'''
+    logging.debug(e.get_data())
+
+func_map = {'input' : ginput, 'output' : goutput,  'print' : myprint, 'strlen' : strlen, 'exit': gexit, 'get_data': get_data}  
     
 lexer = lex.lex();
 
@@ -840,7 +844,7 @@ def evaluateAST(a):
     
     if(a.type == "node-dec"):
         logging.debug('-----eval: node-dec----')
-        new_node_class = type(a.children[0].value, (lib.Node,), dict(((el,None) for i,el in enumerate(a.children[1].value)),__init__=lib.node_init, print_data=lambda self:lib.Node.print_data(self),mapping=dict((i,el) for i,el in enumerate(a.children[1].value))))
+        new_node_class = type(a.children[0].value, (lib.Node,), dict(((el,None) for i,el in enumerate(a.children[1].value)),__init__=lib.node_init, print_data=lambda self:lib.Node.print_data(self), get_data= lambda self: lib.Node().get_data(self), mapping=dict((i,el) for i,el in enumerate(a.children[1].value))))
         function[a.children[0].value] = new_node_class
         return
 

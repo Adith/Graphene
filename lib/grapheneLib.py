@@ -30,6 +30,8 @@ class Node(object):
 		child.id = globalLastNodeIDVal + 1
 		globalLastNodeIDVal = globalLastNodeIDVal + 1
 
+	def get_data(self,child):
+		return dict.copy(child.__dict__)
 
 def node_init(self, *args):
 	for k,v in self.mapping.iteritems():
@@ -55,6 +57,9 @@ class Graph:
 
 	def get_id(self):
 		return self.id
+
+	def get_data(self):
+		return self.edgeList
 
 	def get_list(self):
 		return self.edgeList

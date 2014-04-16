@@ -57,7 +57,7 @@ def renderHelper(direction):
     else:
         query = ''
 
-    url = 'http://localhost:'+str(port)+'/template/d3.html'+query
+    url = 'http://localhost:'+str(port)+'/www/d3.html'+query
     if os.name == 'posix':
         # Works best on Chrome.
         try:
