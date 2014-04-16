@@ -40,7 +40,7 @@ function=dict()
 
 NumberTypes = (types.IntType, types.LongType, types.FloatType, types.ComplexType)
 
-tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'WHITESPACE', 'COMMA', 'NODE', 'EDGE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'HAS', 'ON', 'COLON')
+tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'WHITESPACE', 'COMMA', 'NODE', 'EDGE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'HAS', 'ON', 'COLON')
 literals = [';', '=', '+', '-', '*', '/']
 
 RESERVED = {
@@ -48,6 +48,7 @@ RESERVED = {
   "if": "IF",
   "return": "RETURN",
   "while": "WHILE",
+  "for": "FOR",
   "has": "HAS",
   "on": "ON",
   "NodeType": "NODE",
@@ -120,8 +121,18 @@ def t_error(t):
     sys.exit()
 
 def p_error(p):
-    logging.error("Error in input")
-    logging.error(p.value)
+    if p is None:
+        print "Syntax error: unexpected EOF"
+    else:
+        print "Syntax error at line {}: unexpected token {}".format(p.lineno, p.value)
+
+    #Ugly hack since Ply doesn't provide any useful error information
+    import inspect
+    frame = inspect.currentframe()
+    cvars = frame.f_back.f_locals
+    print 'Expected:', ', '.join(cvars['actions'][cvars['state']].keys())
+    print 'Found:', cvars['ltype']
+    print 'Current stack:', cvars['symstack']
     sys.exit()
 
 def strlen(node):
@@ -417,6 +428,17 @@ def p_return(p):
         
 ######################################################################
 
+#
+#  ████████╗ ██████╗     ██████╗  ██████╗ 
+#  ╚══██╔══╝██╔═══██╗    ██╔══██╗██╔═══██╗
+#     ██║   ██║   ██║    ██║  ██║██║   ██║
+#     ██║   ██║   ██║    ██║  ██║██║   ██║
+#     ██║   ╚██████╔╝    ██████╔╝╚██████╔╝
+#     ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝ 
+#
+#   Handle multiple statements
+#
+
 def p_statementlist(p):
     '''statementlist : statement
                      | statement statementlist'''
@@ -437,15 +459,28 @@ def p_statement(p):
 
 
 def p_iterationstatement(p):
-    '''iterationstatement : WHILE LPAREN expression RPAREN statement'''
-
-    Node = ast.ASTNode()
-    Node.type = 'while'
-    Node.children.append(p[3])
-    Node.children.append(p[5])
-    p[0]=Node
-
-    logging.debug("-------In iterationstatement-------")
+    '''iterationstatement : WHILE LPAREN expression RPAREN statement
+                          | FOR LPAREN statement expression ';' statement RPAREN CURLBEGIN statement CURLEND'''
+                          
+    if ( p[1] == 'while' ):
+        Node = ast.ASTNode()
+        Node.type = 'while'
+        Node.children.append(p[3])
+        Node.children.append(p[5])
+        p[0]=Node
+        logging.debug("-------In iterationstatement (while loop)-------")
+        
+    if( p[1] == 'for' ):
+        Node = ast.ASTNode()
+        Node.type = 'for'
+        Node.children.append(p[3])
+        Node.children.append(p[4])
+        Node.children.append(p[6])
+        Node.children.append(p[9])
+        p[0] = Node
+        
+        logging.debug("-------In iterationstatement (for loop)-------")
+        
 
 def p_expressionstatement(p):
     '''expressionstatement : ';'
@@ -739,6 +774,8 @@ def inToOutLinks(sources):
 
 def evaluateAST(a):
     
+    logging.debug("At an AST Node: "+str(a))
+    logging.debug(len(a.children))
     logging.debug("Evaluating type: "+str(a.type))
    
     if(a.type == "terminal"):
@@ -870,8 +907,21 @@ def evaluateAST(a):
         logging.debug("*********************")
         while (evaluateAST(a.children[0]).value != 0):
             evaluateAST(a.children[1])
-      
-
+    
+    if(a.type == 'for'):
+        logging.debug("evaluateAST of for")
+        logging.debug("*********************")
+        logging.debug(evaluateAST(a.children[0]))
+        logging.debug("*********************")
+        
+        evaluateAST(a.children[0]); # Initialization
+        
+        while (evaluateAST(a.children[1]).value != 0): # Check condition
+            evaluateAST(a.children[3]) # Evaluate statement
+            evaluateAST(a.children[4]) # Evaluate statement
+            evaluateAST(a.children[2]) # Update loop statement
+        
+        
 while True:
     try:
         s = raw_input('graphene> ')
