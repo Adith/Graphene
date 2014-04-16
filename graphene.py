@@ -37,6 +37,7 @@ if len(sys.argv) > 1:
 
 ids=dict()
 function=dict()
+returnArgs=dict()
 
 NumberTypes = (types.IntType, types.LongType, types.FloatType, types.ComplexType)
 
@@ -360,6 +361,7 @@ def p_edgelist(p):
     
 def p_decstatement(p):
     '''declaration : statement'''
+    logging.debug("---- declaration ---")
     p[0]=p[1]
     evaluateAST(p[0])
 
@@ -377,23 +379,61 @@ def p_compoundstatementdef(p):
 
 ######### function def #########################
 
-def p_funcdef(p):
-    '''funcdec : DEF parameters IMPLY ID compoundstatement'''
+# def p_funcdef(p):
+#     '''funcdec : DEF parameters IMPLY ID compoundstatement'''
+#     #funcdef : DEF parameters IMPLY ID CURLBEGIN statementlist CURLEND IMPLY returnlist
+#     #p[0] = ast.Function(None, p[2], tuple(p[3]), (), 0, None, p[5])
+#     Node = ast.ASTNode()
+#     Node.type = 'function-dec'
+#     Node.children.append(p[4])
+#     Node.children.append(p[5])
+#     p[0]=Node
+
+def p_funcdec(p):
+    '''funcdec : func'''
+    p[0] = p[1]
+
+def p_func(p):
+    '''func : DEF parameters IMPLY ID compoundstatement IMPLY returnarguments'''
     #funcdef : DEF parameters IMPLY ID CURLBEGIN statementlist CURLEND IMPLY returnlist
     #p[0] = ast.Function(None, p[2], tuple(p[3]), (), 0, None, p[5])
     Node = ast.ASTNode()
     Node.type = 'function-dec'
-    Node.children.append(p[4])
-    Node.children.append(p[5])
+    Node.children.append(p[2])  #parameters
+
+    compoundChild = ast.ASTNode()
+    compoundChild.type = 'function-signature'
+    compoundChild.children.append(p[4])  #ID
+    compoundChild.children.append(p[5])  #statements
+    compoundChild.children.append(p[7])  #returnargs
+
+    Node.children.append(compoundChild)
+    
     p[0]=Node
+
+
+# def p_parameters(p):
+#     """parameters : LPAREN RPAREN
+#                   | LPAREN varargslist RPAREN"""
+
+#     if len(p) == 3:
+#         p[0] = []
+#     else:
+#         p[0] = p[2]
 
 def p_parameters(p):
     """parameters : LPAREN RPAREN
                   | LPAREN varargslist RPAREN"""
+    Node = ast.ASTNode()
+    Node.type = 'function-pars'
     if len(p) == 3:
-        p[0] = []
+        #p[0] = []
+        Node.children.append(None)
     else:
-        p[0] = p[2]
+        #p[0] = p[2]
+        for n in p[2]:
+            Node.children.append(n)
+    p[0] = Node
     
 def p_varargslist(p):
     """varargslist : varargslist COMMA ID
@@ -403,13 +443,31 @@ def p_varargslist(p):
     else:
         p[0] = [p[1]]
 
-def p_return(p):
-    """returnlist : LPAREN RPAREN
-                  | LPAREN varargslist RPAREN"""
+def p_returnarguments(p):
+    """returnarguments : LPAREN RPAREN
+                  | LPAREN returnset RPAREN"""
+    # if len(p) == 3:
+    #     p[0] = []
+    # else:
+    #     p[0] = p[2]
+    Node = ast.ASTNode()
+    Node.type = 'function-pars'
     if len(p) == 3:
-        p[0] = []
+        #p[0] = []
+        Node.children.append(None)
     else:
-        p[0] = p[2]
+        #p[0] = p[2]
+        for n in p[2]:
+            Node.children.append(n)
+    p[0] = Node
+
+def p_returnset(p):
+    '''returnset : idOrAlphanum
+                | idOrAlphanum COMMA returnset'''
+    if len(p) == 4:
+        p[0] = p[1] + [p[3]]
+    else:
+        p[0] = [p[1]]
         
 ######################################################################
 
@@ -720,14 +778,14 @@ def outToInLinks(links):
 def inToOutNodes(nodeL):
     finalStr =[]
     for node in nodeL:
-        print node
+        # print node
         finalStr.append({'id:': node, 'name': nodeL[node]})
     return finalStr
 
 def inToOutLinks(sources):
     final = []
     for source in sources.keys():
-        print source
+        # print source
         for target in sources[source]:
            final.append({'source': source, 'target' :target['target'], 'left':True, 'right':True, 'weight':target['weight']})
 
@@ -822,7 +880,8 @@ def evaluateAST(a):
         else:
             node=ast.ASTNode()
             node.type="terminal"
-            node.value=a.children[0]()
+            node.value=evaluateAST(a.children[0])
+            # print("************",node.value)
             return node
     
     if(a.type == "sequence"):
@@ -855,7 +914,8 @@ def evaluateAST(a):
 
     if(a.type == "function-dec"):
         function[a.children[0]]=a.children[1]
-        print 'function ', a.children[0], ' defined, with value ', function[a.children[0]]
+        #print 'function ', a.children[0], ' defined, with value ', function[a.children[0]]
+        # print 'function ', a.children[0], ' defined, with value ', a.children[1]
 
     #while loop
     if(a.type == 'while'):
