@@ -1,0 +1,53 @@
+#!/bin/bash
+usage() {
+  echo "Usage: graphene [test [-t <number>]|[-i]] | [-f <file_path>] "
+}
+if (($# == 0)); then
+  python graphene.py
+else
+  if [ $1 = "test" ]; then
+      python test/main.py
+  fi
+
+  while getopts ":f:t:ih" opt; do
+    case $opt in
+      f)
+        python graphene.py < $OPTARG
+        break
+        ;;
+      i)
+        # "Scotty! I need.. more.. isolated tests!"
+        python test/main.py $opt
+        break
+        ;;
+      t)
+        # "Run this, sesame!"
+        python test/main.py $opt $OPTARG
+        break
+        ;;
+      h)
+        echo "Help is at hand." >&2
+        echo "OPTIONS"
+        echo -e -n "\t-f"
+        echo -e "\tFile to read source from"
+        echo -e "\t\tUsage: graphene -f <path>"
+        echo -e -n "\n\t-t"
+        echo -e "\tRun test Number <number>"
+        echo -e "\t\tUsage: graphene test -t <test_name>"
+        echo -e -n "\n\t-i"
+        echo -e "\tRun tests in isolated mode. One test does not affect another."
+        echo -e "\t\tUsage: graphene test -i"
+        break
+        ;;
+      \?)
+        echo "Invalid option: -$OPTARG" >&2
+        exit 1
+        ;;
+      :)
+        echo "Option -$OPTARG requires an argument." >&2
+        echo "Usage: graphene [test | -t <number> | -i | -f <file_path>] "
+        exit 1
+        ;;
+    esac
+  done
+fi

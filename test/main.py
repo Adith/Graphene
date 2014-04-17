@@ -9,6 +9,7 @@ from itertools import cycle
 import os.path
 from collections import OrderedDict
 
+import sys
 import pexpect
 import time
 import json
@@ -35,7 +36,6 @@ tests = {
                 "name" : "Variable Assignment & Print",
                 "severity" : CRITICAL
             },
-
 }
 
 failed_tests = []
@@ -49,12 +49,22 @@ print(" ██║   ██║██╔══██╗██╔══██║█
 print(" ╚██████╔╝██║  ██║██║  ██║██║     ██║  ██║███████╗██║ ╚████║███████╗       ██║   ███████╗███████║   ██║       ███████║╚██████╔╝██║   ██║   ███████╗");
 print("  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝╚══════╝╚═╝  ╚═══╝╚══════╝       ╚═╝   ╚══════╝╚══════╝   ╚═╝       ╚══════╝ ╚═════╝ ╚═╝   ╚═╝   ╚══════╝\n\n");
 
-c = pexpect.spawn('/usr/bin/python ../graphene.py')
+c = pexpect.spawn('/usr/bin/python graphene.py')
 c.expect(PROMPT)
 ran = 0
 failed = 0
+isolated = False
+test_name = -1
+
+if sys.argv[1] == "i":
+    isolated = True
+elif sys.argv[1] == "t":
+    test_name = sys.argv[2]
 
 for name, test in tests.iteritems():
+    if test_name != -1:
+        if name != test_name:
+            continue
     print("Running Test '",name,"'",sep="", end="")
     for command in test["commands"]:
         if isinstance(command,list):
@@ -76,6 +86,10 @@ for name, test in tests.iteritems():
         print(" => Passed.")
         test["result"] = PASS
     ran = ran + 1
+    if isolated:
+        c.kill(1)
+        c = pexpect.spawn('/usr/bin/python graphene.py')
+        c.expect(PROMPT)
 
 if os.path.isfile(TEST_LOG):
     with open(TEST_LOG, "r") as f:
