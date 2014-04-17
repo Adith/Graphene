@@ -9,6 +9,7 @@
 #    ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝ 
 # Error handling - exit table
 
+import readline
 import ply.yacc as yacc
 import ply.lex as lex
 import os, sys
@@ -74,7 +75,7 @@ t_LPAREN = r'\('
 
 t_RPAREN = r'\)'
     
-t_STRING = r'\"[a-zA-Z\ 0-9]*\"'
+t_STRING = r'[\"|\'][a-zA-Z\ 0-9]*[\"|\']'
 
 t_COMMA = r','
 
