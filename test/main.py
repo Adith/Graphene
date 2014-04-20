@@ -14,7 +14,7 @@ import pexpect
 import time
 import json
 
-TEST_LOG = "test.log"
+TEST_LOG = "test/test.log"
 MINOR = "MINOR"
 CRITICAL = "CRITICAL"
 PANIC = "PANIC"
@@ -56,10 +56,11 @@ failed = 0
 isolated = False
 test_name = -1
 
-if sys.argv[1] == "i":
-    isolated = True
-elif sys.argv[1] == "t":
-    test_name = sys.argv[2]
+if len(sys.argv) >1:
+    if sys.argv[1] == "i":
+        isolated = True
+    elif sys.argv[1] == "t":
+        test_name = sys.argv[2]
 
 for name, test in tests.iteritems():
     if test_name != -1:
@@ -116,7 +117,7 @@ if failed >0:
         print("Test '",v,"':",sep="")
         print("\tExpected:",tests[v]["expect"])
         print("\tReceived:",tests[v]["received"])
-        print("\tSeverity:",tests[v]["severity"])
+        print("\tSeverity:",tests[v]["severity"],"\n")
 
 current_result = json.dumps({
     "time" : time.asctime(time.localtime(time.time())),
