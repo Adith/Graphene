@@ -176,12 +176,13 @@ def goutput():
     
     # Dump state to json
     nodes = []
-    for n in lib.nodeList:
-        nodes.append(n.get_prop())
+    for k,n in lib.nodeList.iteritems():
+        nodes.append(n.get_data())
 
     graphs = []
-    for g in lib.graphList:
-        graphs.extend(g.get_list()[0])
+    
+    for k,g in lib.graphList.iteritems():
+        graphs.extend(inToOutLinks(g.get_data()))
 
     # Nodes and Links converted from IR to json 
     logging.debug("nodes:", str(nodes))
@@ -207,19 +208,21 @@ def ginput():
     input = gui.input()
    
     input = json.loads(input)
+    
+    lib.graphList[len(lib.graphList)+1] = lib.Graph(outToInLinks(input['links']))
 
-    lib.graphList.append(lib.Graph(input['links']))
-
+    # Unfortunately, we have to decide whether to create a template node class or one for EVERY node in input. This one does the former.
+    template_node_class = type("template", (lib.Node,), dict(((k,None) for k,v in input["nodes"][0].iteritems()),__init__=lib.node_init, print_data=lambda self:lib.Node.print_data(self), get_data= lambda self: lib.Node().get_data(self), mapping=dict((i,el) for i,el in enumerate(input["nodes"][0]))))
+    
     for k in input['nodes']:
-       lib.nodeList.insert(k["id"],lib.Node(k));
+       lib.nodeList[k["id"]] = (template_node_class(k));
+    
+    print "One graph and",len(input["nodes"]),"nodes touched."
 
-   # pretty prints json response
     logging.debug(lib.nodeList)
     logging.debug(lib.graphList)
     logging.debug(outToInNodes(input['nodes']))
     logging.debug(outToInLinks(input['links']))
-
-    print json.dumps(input, indent=4, sort_keys=True)
 
 
 #
@@ -779,9 +782,9 @@ def outToInLinks(links):
     final = dict()
     for link in links:
         try:
-            final[link['source']].append({'target':link['target'], 'weight':link['weight']})
+            final[link['source']][link['target']] = ({'weight':link['weight']})
         except KeyError:
-            final[link['source']] = [{'target':link['target'], 'weight':link['weight']}]
+                final[link['source']] = {link['target'] : {'weight':link['weight']}}
     return final
 
 
@@ -796,10 +799,9 @@ def inToOutNodes(nodeL):
 
 def inToOutLinks(sources):
     final = []
-    for source in sources.keys():
-        # print source
-        for target in sources[source]:
-           final.append({'source': source, 'target' :target['target'], 'left':True, 'right':True, 'weight':target['weight']})
+    for source, targets in sources.iteritems():
+        for target,properties in targets.iteritems():
+           final.append({'source': source, 'target' :target, 'left':True, 'right':True, 'weight':properties['weight']})
 
     return final
 
@@ -1005,7 +1007,7 @@ def evaluateAST(a):
     if(a.type == "graph-dec"):
         logging.debug('-----eval: graph-dec----')
         
-        new_graph = lib.Graph(evaluateAST(a.children[1]), evaluateAST(a.children[2]), evaluateAST(a.children[3]))
+        new_graph = lib.Graph(evaluateAST(a.children[3]), evaluateAST(a.children[1]), evaluateAST(a.children[2]))
         ids[a.children[0].value] = new_graph
 
         # new_graph.print_data()

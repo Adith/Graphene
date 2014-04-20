@@ -11,8 +11,8 @@ import copy
 from collections import namedtuple
 import logging
 
-graphList = []
-nodeList = []
+graphList = {}
+nodeList = {}
 
 globalLastNodeIDVal = 0
 globalLastGraphIDVal = 0
@@ -30,11 +30,13 @@ class modified_dict(dict):
 class Node(object):
 	'''Internal representation of the node type'''
 	def print_data(child):
-		print "\tid : ",child.id
 		for k,v in child.mapping.iteritems():
 			print "\t", v, ":", getattr(child, v)
 	
 	id = -1
+
+	# def __init(self, node):
+
 
 	def inc_id(self, child):
 		global globalLastNodeIDVal
@@ -46,9 +48,9 @@ class Node(object):
 
 def node_init(self, *args):
 	for k,v in self.mapping.iteritems():
-		if k > len(args)-1:
+		if k > len(args[0])-1:
 			break
-		setattr(self,v,args[k])
+		setattr(self,v,args[0][v])
 	Node().inc_id(self)
 
 class Graph:
@@ -57,7 +59,7 @@ class Graph:
 	
 	edgeList = {}
 	
-	def __init__(self, gtype = 'u', gkey = "id", edgeList = None):
+	def __init__(self, edgeList = None, gtype = 'd', gkey = "id"):
 		global globalLastGraphIDVal
 		
 		self.id = globalLastGraphIDVal + 1
@@ -66,13 +68,11 @@ class Graph:
 		if edgeList is not None:
 			self.edgeList = dict.copy(edgeList)
 
+
 	def get_id(self):
 		return self.id
 
 	def get_data(self):
-		return self.edgeList
-
-	def get_list(self):
 		return self.edgeList
 
 	# Print to console
