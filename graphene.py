@@ -35,9 +35,8 @@ if len(sys.argv) > 1:
     elif sys.argv[1] in ['--info', '-i']:
         logger.setLevel(logging.INFO)
 
-ids=dict()
+ids=lib.modified_dict()
 function=dict()
-funcIds=dict()
 
 NumberTypes = (types.IntType, types.LongType, types.FloatType, types.ComplexType)
 
@@ -109,7 +108,7 @@ def t_WHITESPACE(t):
 
 def t_NUMBER(t):
     r"""(\d+(\.\d*)?|\.\d+)([eE][-+]? \d+)?"""
-    t.value = decimal.Decimal(t.value)
+    #t.value = decimal.Decimal(t.value)
     return t
 
 def t_error(t):
@@ -140,7 +139,7 @@ def myprint(*node):
             print "Graph has"
             e.print_data();
         else:
-            print e
+            print evaluateAST(e)
 
 # ████████╗ ██████╗     ██████╗  ██████╗ 
 # ╚══██╔══╝██╔═══██╗    ██╔══██╗██╔═══██╗
@@ -421,6 +420,7 @@ def p_varargslist(p):
     else:
         p[0] = [p[1]]
 
+
 def p_returnarguments(p):
     """returnarguments : LPAREN RPAREN
                   | LPAREN returnset RPAREN"""
@@ -429,17 +429,24 @@ def p_returnarguments(p):
     if len(p) == 3:
         Node.children.append(None)
     else:
-        for n in p[2]:
+        for n in p[2].children:
             Node.children.append(n)
     p[0] = Node
 
 def p_returnset(p):
     '''returnset : idOrAlphanum
                 | idOrAlphanum COMMA returnset'''
-    if len(p) == 4:
-        p[0] = p[1] + [p[3]]
-    else:
-        p[0] = [p[1]]
+
+    logging.debug("returnset")
+
+    arglistNode = ast.ASTNode()
+    arglistNode.type = "returnset"
+
+    arglistNode.children.append(p[1])
+
+    if len(p) > 2:
+        arglistNode.children.extend(p[3].children)
+    p[0] = arglistNode
         
 ######################################################################
 
@@ -627,11 +634,8 @@ def p_call(p):
             child.type = 'arglist'
             child.value = p[5]
             node.children.append(child)
-            p[0] = node
         elif(len(p) == 6):
             node.children.append(func_map[p[1]][p[3]])
-            node.children.append([])
-            p[0] = node
         else:
             try:
                 logging.debug("****inbuilt****")
@@ -657,30 +661,11 @@ def p_call(p):
                 child.type = 'arglist'
                 child.value = p[3]
                 node.children.append(child)
-            p[0] = node
+        p[0] = node
 
     except:
         logging.error("Function not found. Please replace developer")
         logging.debug(p[0])
-        
-        
-##def p_arglist(p):
-##    '''arglist : idOrAlphanum
-##               | idOrAlphanum COMMA arglist
-##               | '''
-##        
-##    arglist = []
-##    i=1
-##    while i<len(p):
-##        arglist.append(p[i])
-##        i+=2
-##    if(p[0] == None):
-##        p[0] = arglist
-##    else:
-##        p[0].extend(arglist)
-##        
-##    p[0] = list(chain.from_iterable(itertools.repeat(x,1) if isinstance(x,str) or isinstance(x,decimal.Decimal) else x for x in p[0]))
-##    #itertools.repeat(x,1) if isinstance(x,str) else x for x in items
 
 def p_arg(p):
     '''arglist : idOrAlphanum COMMA arglist
@@ -779,7 +764,19 @@ def inToOutLinks(sources):
     return final
 
 def evaluateAST(a):
-    
+    global ids
+    if(isinstance(a,basestring)):
+        return a
+
+    if(isinstance(a,decimal.Decimal)):
+        return a
+
+    if(isinstance(a,list)):
+        ret = []
+        for e in a:
+            ret.append(evaluateAST(e).value)
+        return ret
+
     logging.debug("Evaluating type: "+str(a.type))
 
     if(a.type =="statementlist"):
@@ -787,7 +784,7 @@ def evaluateAST(a):
         for e in a.children:
             evaluateAST(e)
         return a
-   
+
     if(a.type == "terminal"):
         logging.debug("Terminal value: "+str(a.value))
         return a
@@ -813,8 +810,8 @@ def evaluateAST(a):
                 a.value[k] = v
         return a.value
 
-    if(a.type == "arglist"):
-        logging.debug("------argList-----")
+    if(a.type == "arglist" or a.type == "returnset"):
+        logging.debug("------argList | returnset-----")
         a.value = []
         
         for e in a.children:
@@ -861,49 +858,64 @@ def evaluateAST(a):
         # return-args
 
         #inbuilt functions - tested with print()
-        if len(a.children) == 2:
-            node=ast.ASTNode()
-            node.type="terminal"
-            args = []
-            node.value=a.children[0](*evaluateAST(a.children[1].value).value)
-            return node
-
-        #User-defined functions
-        if len(a.children):
-            # Number of formal arguments - len(a.children[1].children)
-            # Fist argument - a.children[1].children[0]
-            # Number of actual arguments - len(evaluateAST(a.children[3].value).value)
-            # First argument - evaluateAST(a.children[3].value).value[0]
-
-            # if a.children[1].children[0] == None:
-            #     print "No formal arguments"
-
-            # if a.children[3] == None:
-            #     print "No actual arguments"
-
-            if (a.children[1].children[0] == None and a.children[3] != None) or (a.children[1].children[0] != None and a.children[3] == None):
-                print "Error! - Number of arguments in function call does not match"
-                sys.exit(0)
-
-            elif a.children[1].children[0] != None and a.children[3] != None and len(a.children[1].children) != len(evaluateAST(a.children[3].value).value):
-                print "Error! - Number of arguments in function call does not match"
-                sys.exit(0)
-
-            global funcIds
-
+        node=ast.ASTNode()
+        node.type="terminal"
+        args = []
+        if isinstance(a.children[0],ast.ASTNode):
+            ids = lib.modified_dict({"__global__": ids})
             numArgs = len(a.children[1].children)
             for i in range(0,numArgs):
-                funcIds[a.children[1].children[i]]= evaluateAST(a.children[3].value).value[i]
-                logging.info('Assigned '+str(a.children[1].children[i])+' to '+str(funcIds[a.children[1].children[i]])+' inside funccall')
+                ids[a.children[1].children[i]]= evaluateAST(a.children[3].value).value[i]
+                logging.info('Assigned '+str(a.children[1].children[i])+' to '+str(ids[a.children[1].children[i]])+' inside funccall')
+            logging.debug("MODIFIED scope:",ids)
+            evaluateAST(a.children[0])
+            node.value = []
+            for ret in a.children[2].children:
+                node.value.append(evaluateAST(ret))
+            ids = ids["__global__"]
+        else:
+            if len(a.children) > 1:
+                node.value=a.children[0](*evaluateAST(a.children[1].value).value)
+            else:
+                node.value=a.children[0]()
+        return node
+
+        # #User-defined functions
+        # if len(a.children):
+        #     # Number of formal arguments - len(a.children[1].children)
+        #     # Fist argument - a.children[1].children[0]
+        #     # Number of actual arguments - len(evaluateAST(a.children[3].value).value)
+        #     # First argument - evaluateAST(a.children[3].value).value[0]
+
+        #     # if a.children[1].children[0] == None:
+        #     #     print "No formal arguments"
+
+        #     # if a.children[3] == None:
+        #     #     print "No actual arguments"
+
+        #     if (a.children[1].children[0] == None and a.children[3] != None) or (a.children[1].children[0] != None and a.children[3] == None):
+        #         print "Error! - Number of arguments in function call does not match"
+        #         sys.exit(0)
+
+        #     elif a.children[1].children[0] != None and a.children[3] != None and len(a.children[1].children) != len(evaluateAST(a.children[3].value).value):
+        #         print "Error! - Number of arguments in function call does not match"
+        #         sys.exit(0)
+
+        #     global funcIds
+
+        #     numArgs = len(a.children[1].children)
+        #     for i in range(0,numArgs):
+        #         funcIds[a.children[1].children[i]]= evaluateAST(a.children[3].value).value[i]
+        #         logging.info('Assigned '+str(a.children[1].children[i])+' to '+str(funcIds[a.children[1].children[i]])+' inside funccall')
 
 
-            node = ast.ASTNode()    
-            node.type = 'terminal'
-            node.value = evaluateAST(a.children[0])
+        #     node = ast.ASTNode()    
+        #     node.type = 'terminal'
+        #     node.value = evaluateAST(a.children[0])
 
-            funcIds=dict()
+        #     funcIds=dict()
 
-            return node
+        #     return node
 
         # if len(a.children)>1 and len(a.children)!=3:
         #     print "outer if"
@@ -934,8 +946,8 @@ def evaluateAST(a):
         node=ast.ASTNode()
         node.type="terminal"
         try:
-            if a.children[0] in funcIds:
-                node.value = funcIds[a.children[0]]
+            if a.children[0] in ids:
+                node.value = ids[a.children[0]]
             else:
                 node.value=ids[a.children[0]]
         except KeyError, e:
@@ -960,7 +972,6 @@ def evaluateAST(a):
 
     if(a.type == "function-dec"):
         function[a.children[0]]=a.children[1]
-        print (function[a.children[0]])
 
     #while loop
     if(a.type == 'while'):
