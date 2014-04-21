@@ -9,7 +9,7 @@
 #    ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝ 
 # Error handling - exit table
 
-import readline
+#import readline
 import ply.yacc as yacc
 import ply.lex as lex
 import os, sys
@@ -270,6 +270,7 @@ def p_declaration(p):
                    | vardec'''
     logging.debug("----- declaration ------")
     p[0]= p[1]
+    print p[0]
     evaluateAST(p[0])
 
 def p_vardec(p):
@@ -501,12 +502,26 @@ def p_statementlist(p):
 
 def p_statement(p):
     '''statement : expressionstatement
-                 | iterationstatement'''
+                 | iterationstatement
+                 '''
     
     logging.debug("statement")
     
     p[0]=p[1]
 
+
+def p_edgeexpression(p):                       
+    '''edgeaddition : ID '+' idOrAlphanum CONNECTOR idOrAlphanum'''
+    logging.debug("edgeadd")
+    node = ast.ASTNode()
+    node.type = "addedge"
+    node.children.append(p[1])
+    node.children.append(p[3])
+    node.children.append(p[4])
+    node.children.append(p[5])
+    #print ids[p[2]].get_list()
+    p[0] = node   
+    logging.debug("-------In edgeaddition-------") 
 
 def p_iterationstatement(p):
     '''iterationstatement : WHILE LPAREN expression RPAREN statement
@@ -546,7 +561,7 @@ def p_expressionstatement(p):
 def p_expression(p):                       
     '''completeexpression : call
                   | assignmentexpression
-                  '''
+                  | edgeaddition'''
     logging.debug("expr")
     p[0] = p[1]
     logging.debug(p[0].type)
@@ -911,7 +926,18 @@ def evaluateAST(a):
         ids[a.children[0]]= evaluateAST(a.children[1]).value
         logging.info('Assigned '+str(ids[a.children[0]])+' to '+str(a.children[0]))
         return 
-        
+
+    if(a.type == "addedge"):
+           logging.debug("------argEdge-----")
+           curr =  ids[a.children[0]].get_data()
+           if a.children[1].value in curr.keys():
+               curr[a.children[1].value][a.children[3].value]={"__connector__":a.children[2]}
+           else:
+               curr[a.children[1].value] = {a.children[3].value : {"__connector__":a.children[2]}}
+           ids[a.children[0]].edgelist=curr
+           print ids[a.children[0]].edgelist
+           return
+                   
     if(a.type == "funccall"):
         logging.debug('-----eval: call----')
 
