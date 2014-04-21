@@ -9,7 +9,7 @@ else
       python test/main.py
   fi
 
-  while getopts ":f:t:ih" opt; do
+  while getopts ":f:t:idh" opt; do
     case $opt in
       f)
         python graphene.py < $OPTARG
@@ -18,6 +18,11 @@ else
       i)
         # "Scotty! I need.. more.. isolated tests!"
         python test/main.py $opt
+        break
+        ;;
+      d)
+        # "Scotty! I need.. more.. isolated tests!"
+        python graphene.py --debug
         break
         ;;
       t)

@@ -20,15 +20,24 @@ $.ajax({
   dataType: 'json',
   async: false,
   success: function(data) {
+    console.log(data);
+      mapping = {};
+      index = 0;
         $.each(data.nodes,function(i,node){
-              nodes.push({"id": i, "name": node["name"]});
+              nodes.push({"id": index, "name": node["name"]});
+              mapping[node["id"]] = index;
+              index = index+1;
             });
             lastNodeId = data["lastNodeId"];
             $.each(data.links,function(i,link){
-              links.push({"source": link["source"], "target": link["target"], "left": link["left"], "right": link["right"], "weight": link["weight"]});
+              links.push({"source": mapping[link["source"]], "target": mapping[link["target"]], "left": link["left"], "right": link["right"], "weight": link["weight"]});
             }); 
           }
 });
+
+console.log(mapping);
+console.log(nodes);
+console.log(links);
 
 // init D3 force layout
 var force = d3.layout.force()

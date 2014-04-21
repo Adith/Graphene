@@ -139,7 +139,7 @@ def p_error(p):
 def strlen(node):
     print "Count:", len(G)
 
-def myprint(*node):
+def gprint(*node):
     logging.debug('******print******')
 
     for e in node:
@@ -162,27 +162,28 @@ def myprint(*node):
 # Graph to be displayed visually. Global nodelist has to be 
 # size limited to only the nodes in the specified graph
 
-def goutput(graph_name):
-    # Displays graph visually
-    return
-
-def goutput(graph_name, graph_nodes):
-    # Displays graph on console
-    return
-
-def goutput():
+def goutput(graph=None):
     # Prints state to D3
     # Note: state = ALL graphs
     
     # Dump state to json
     nodes = []
-    for k,n in lib.nodeList.iteritems():
-        nodes.append(n.get_data())
-
     graphs = []
-    
-    for k,g in lib.graphList.iteritems():
-        graphs.extend(inToOutLinks(g.get_data()))
+
+    if graph == None:
+        nodes = inToOutNodes(lib.nodeList)
+        for k,g in lib.graphList.iteritems():
+            graphs.extend(inToOutLinks(g.get_data()))
+    else:
+        graphs.extend(inToOutLinks(graph.get_data()))
+        g = graph.get_data()
+        graph_nodelist = {}
+        for source, destinations in g.iteritems():
+            graph_nodelist[source] = lib.nodeList[source]
+            for destination, properties in destinations.iteritems():
+                graph_nodelist[destination] = lib.nodeList[destination]
+
+        nodes = inToOutNodes(graph_nodelist)
 
     # Nodes and Links converted from IR to json 
     logging.debug("nodes:", str(nodes))
@@ -191,6 +192,8 @@ def goutput():
     # Dump json to file
     with open('./proc/state.json', 'w') as outfile:
         json.dump({"nodes":nodes, "lastNodeId": len(nodes)-1, "links": graphs}, outfile)
+
+    # print {"nodes":nodes, "lastNodeId": len(nodes)-1, "links": graphs}
 
     gui.output()
 
@@ -208,7 +211,9 @@ def ginput():
     input = gui.input()
    
     input = json.loads(input)
-    
+
+    # print json.dumps(input, indent=4, sort_keys=True)
+    print input
     lib.graphList[len(lib.graphList)+1] = lib.Graph(outToInLinks(input['links']))
 
     # Unfortunately, we have to decide whether to create a template node class or one for EVERY node in input. This one does the former.
@@ -218,7 +223,6 @@ def ginput():
        lib.nodeList[k["id"]] = (template_node_class(k));
     
     print "One graph and",len(input["nodes"]),"nodes touched."
-
     logging.debug(lib.nodeList)
     logging.debug(lib.graphList)
     logging.debug(outToInNodes(input['nodes']))
@@ -244,7 +248,7 @@ def get_data(e):
     ''' Used for debugging'''
     logging.debug(e.get_data())
 
-func_map = {'input' : ginput, 'output' : goutput,  'print' : myprint, 'strlen' : strlen, 'exit': gexit, 'get_data': get_data}  
+func_map = {'input' : ginput, 'output' : goutput,  'print' : gprint, 'strlen' : strlen, 'exit': gexit, 'get_data': get_data}  
     
 lexer = lex.lex();
 
@@ -737,7 +741,7 @@ def p_isNumber(p):
     
     termNode = ast.ASTNode()
     termNode.type = "terminal"
-    termNode.value = p[1]
+    termNode.value = int(p[1])
     p[0] = termNode
     logging.debug(p[0].type)
     
@@ -751,7 +755,7 @@ def p_isString(p):
 
     termNode = ast.ASTNode()
     termNode.type = "terminal"
-    termNode.value = p[1][1:-1]
+    termNode.value = str(p[1][1:-1])
     p[0] = termNode
     logging.debug(p[0].type)
 
@@ -781,10 +785,18 @@ def outToInNodes(nodes):
 def outToInLinks(links):
     final = dict()
     for link in links:
+        properties = {}
+        for k,v in link.iteritems():
+            if k not in ["source","target","left","right"]:
+                properties[k] = v
+        if link["left"] == True:
+            properties["__connector__"] = "<->"
+        else:
+            properties["__connector__"] = "->"
         try:
-            final[link['source']][link['target']] = ({'weight':link['weight']})
+            final[link['source']][link['target']] = (properties)
         except KeyError:
-                final[link['source']] = {link['target'] : {'weight':link['weight']}}
+            final[link['source']] = {link['target'] : properties}
     return final
 
 
@@ -792,18 +804,26 @@ def outToInLinks(links):
 
 def inToOutNodes(nodeL):
     finalStr =[]
-    for node in nodeL:
-        # print node
-        finalStr.append({'id:': node, 'name': nodeL[node]})
+    for id,node in nodeL.iteritems():
+        finalStr.append(node.get_data())
     return finalStr
 
 def inToOutLinks(sources):
-    final = []
+    links = []
     for source, targets in sources.iteritems():
         for target,properties in targets.iteritems():
-           final.append({'source': source, 'target' :target, 'left':True, 'right':True, 'weight':properties['weight']})
+            link = {'source': int(source), 'target' :int(target), 'right':True }
+            if properties["__connector__"] == "<->":
+                link["left"] = True
+            else:
+                link["left"] = False
 
-    return final
+            for k,v in properties.iteritems():
+                link[k] = v
+            if "weight" not in link.keys():
+                link["weight"] = ''
+            links.append(link)
+    return links
 
 def evaluateAST(a):
 
@@ -916,11 +936,17 @@ def evaluateAST(a):
             for ret in a.children[2].children:
                 node.value.append(evaluateAST(ret))
             ids = ids["__global__"]
-        else:
+        else:    
             if len(a.children) > 1:
                 node.value=a.children[0](*evaluateAST(a.children[1].value).value)
             else:
                 node.value=a.children[0]()
+            try:
+                if a.children[0].__bases__[0].__name__ in ["Node"]:
+                    lib.nodeList[lib.globalLastNodeIDVal] = node.value
+            except Exception, e:
+                pass
+            
         return node
 
         # #User-defined functions
@@ -1001,13 +1027,26 @@ def evaluateAST(a):
     if(a.type == "node-dec"):
         logging.debug('-----eval: node-dec----')
         new_node_class = type(a.children[0].value, (lib.Node,), dict(((el,None) for i,el in enumerate(a.children[1].value)),__init__=lib.node_init, print_data=lambda self:lib.Node.print_data(self), get_data= lambda self: lib.Node().get_data(self), mapping=dict((i,el) for i,el in enumerate(a.children[1].value))))
-        function[a.children[0].value] = new_node_class
+        
+        func_map[a.children[0].value] = new_node_class
         return
 
     if(a.type == "graph-dec"):
         logging.debug('-----eval: graph-dec----')
         
         new_graph = lib.Graph(evaluateAST(a.children[3]), evaluateAST(a.children[1]), evaluateAST(a.children[2]))
+        lib.graphList[lib.globalLastGraphIDVal] = new_graph
+        for source, destinations in new_graph.get_data().iteritems():
+            source = int(source)
+            if source not in lib.nodeList.keys():
+                logging.error("Source Node #"+str(source)+" not found.")
+                sys.exit(0)
+            for destination, properties in destinations.iteritems():
+                destination = int(destination)
+                if destination not in lib.nodeList.keys():
+                    logging.error("Destination Node #"+str(destination)+"not found.")
+                    sys.exit(0)
+
         ids[a.children[0].value] = new_graph
 
         # new_graph.print_data()

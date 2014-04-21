@@ -14,8 +14,8 @@ import logging
 graphList = {}
 nodeList = {}
 
-globalLastNodeIDVal = 0
-globalLastGraphIDVal = 0
+globalLastNodeIDVal = -1
+globalLastGraphIDVal = -1
 
 class modified_dict(dict):
 	def __getitem__(self, key):
@@ -30,13 +30,11 @@ class modified_dict(dict):
 class Node(object):
 	'''Internal representation of the node type'''
 	def print_data(child):
+		print "\t","ID:", child.id
 		for k,v in child.mapping.iteritems():
 			print "\t", v, ":", getattr(child, v)
 	
 	id = -1
-
-	# def __init(self, node):
-
 
 	def inc_id(self, child):
 		global globalLastNodeIDVal
@@ -44,13 +42,14 @@ class Node(object):
 		globalLastNodeIDVal = globalLastNodeIDVal + 1
 
 	def get_data(self,child):
-		return dict.copy(child.__dict__)
+		return child.__dict__
 
 def node_init(self, *args):
+
 	for k,v in self.mapping.iteritems():
-		if k > len(args[0])-1:
+		if k > len(args)-1:
 			break
-		setattr(self,v,args[0][v])
+		setattr(self,v,args[k])
 	Node().inc_id(self)
 
 class Graph:
@@ -67,7 +66,6 @@ class Graph:
 		
 		if edgeList is not None:
 			self.edgeList = dict.copy(edgeList)
-
 
 	def get_id(self):
 		return self.id
