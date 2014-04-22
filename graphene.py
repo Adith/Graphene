@@ -925,17 +925,35 @@ def evaluateAST(a):
         node.type="terminal"
         args = []
         if isinstance(a.children[0],ast.ASTNode):
-            ids = lib.modified_dict({"__global__": ids})
+            if "__global__" in ids.keys():
+                caller_local = lib.modified_dict(ids)
+                caller_local.pop("__global__", None)
+                ids = lib.modified_dict({"__global__": ids["__global__"], "__caller_local__" : caller_local})
+            else:
+                ids = lib.modified_dict({"__global__": ids})
             numArgs = len(a.children[1].children)
+            
+            if a.children[1].children[0] == None:
+                numArgs = 0
+            
             for i in range(0,numArgs):
                 ids[a.children[1].children[i]]= evaluateAST(a.children[3].value).value[i]
                 logging.info('Assigned '+str(a.children[1].children[i])+' to '+str(ids[a.children[1].children[i]])+' inside funccall')
-            logging.debug("MODIFIED scope:",ids)
+            logging.debug("MODIFIED scope: Before call:",ids)
             evaluateAST(a.children[0])
             node.value = []
-            for ret in a.children[2].children:
-                node.value.append(evaluateAST(ret))
-            ids = ids["__global__"]
+
+            if a.children[2].children[0] != None:       
+                for ret in a.children[2].children:
+                    node.value.append(evaluateAST(ret))
+            
+            if "__caller_local__" in ids.keys():
+                __global = ids["__global__"]
+                ids = ids["__caller_local__"]
+                ids["__global__"] = __global
+            else:
+                ids = ids["__global__"]
+            logging.debug("MODIFIED scope: After call:",ids)
         else:    
             if len(a.children) > 1:
                 node.value=a.children[0](*evaluateAST(a.children[1].value).value)

@@ -21,10 +21,14 @@ class modified_dict(dict):
 	def __getitem__(self, key):
 		try:
 			val = dict.__getitem__(self, key)
+			logging.debug("Lookup for "+key+" in "+str(self))
 			logging.info("Retrieved from local scope")
 		except KeyError, e:
-			val = dict.__getitem__(self["__global__"], key)
-			logging.info("Retrieved from global scope")
+			if "__global__" in self.keys():
+				val = self["__global__"][key]
+				logging.info("Retrieved from global scope")
+			else:
+				raise KeyError
 		return val
 
 class Node(object):
