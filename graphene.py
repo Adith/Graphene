@@ -9,7 +9,7 @@
 #    ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝
 # Error handling - exit table
 
-import readline
+#import readline
 import ply.yacc as yacc
 import ply.lex as lex
 import os, sys
@@ -24,9 +24,11 @@ import types
 import decimal
 import json
 from lib import grapheneLib as lib
+from lib import grapheneHelper as helper
 from collections import namedtuple
 import ast
 import logging
+
 # import symboltable
 
 logger = logging.getLogger()
@@ -36,12 +38,11 @@ if len(sys.argv) > 1:
     elif sys.argv[1] in ['--info', '-i']:
         logger.setLevel(logging.INFO)
 
-ids=lib.modified_dict()
 function=dict()
 
 NumberTypes = (types.IntType, types.LongType, types.FloatType, types.ComplexType)
 
-tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR')
+tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'FOREACH', 'IN', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR')
 literals = [';', '=', '+', '-', '*', '/']
 t_GR = r'\>'
 t_LS = r'\<'
@@ -53,6 +54,8 @@ RESERVED = {
   "return": "RETURN",
   "while": "WHILE",
   "for": "FOR",
+  "foreach": "FOREACH",
+  "in":"IN",
   "has": "HAS",
   "on": "ON",
   "NodeType": "NODE",
@@ -536,7 +539,7 @@ def p_edgeexpression(p):
     node.children.append(p[3])
     node.children.append(p[4])
     node.children.append(p[5])
-    #print ids[p[2]].get_list()
+    #print helper.ids[p[2]].get_list()
     p[0] = node
 
 def p_node_removal_expression(p):
@@ -565,27 +568,43 @@ def p_node_lookup(p):
 
 def p_iterationstatement(p):
     '''iterationstatement : WHILE LPAREN expression RPAREN statement
-                          | FOR LPAREN statement expression ';' statement RPAREN CURLBEGIN statement CURLEND'''
+                          | FOR LPAREN statement expression ';' statement RPAREN CURLBEGIN statement CURLEND
+                          | FOREACH LPAREN ID IN ID RPAREN statement'''
 
     if ( p[1] == 'while' ):
         Node = ast.ASTNode()
         Node.type = 'while'
-        Node.children.append(p[3])
-        Node.children.append(p[5])
+        Node.children.append(p[3]) #Condition
+        Node.children.append(p[5]) #Statement
         p[0]=Node
         logging.debug("-------In iterationstatement (while loop)-------")
 
     if( p[1] == 'for' ):
         Node = ast.ASTNode()
         Node.type = 'for'
-        Node.children.append(p[3])
-        Node.children.append(p[4])
-        Node.children.append(p[6])
-        Node.children.append(p[9])
+        Node.children.append(p[3]) #Initialization
+        Node.children.append(p[4]) #Condition
+        Node.children.append(p[6]) #Update
+        Node.children.append(p[9]) #Statement
         p[0] = Node
 
         logging.debug("-------In iterationstatement (for loop)-------")
-
+    
+    if( p[1] == 'foreach' ):
+        Node = ast.ASTNode()
+        Node.type = 'foreach'
+        Node.children.append(p[3]) #Iter variable
+        Node.children.append(p[5]) #Iter list
+        Node.children.append(p[7]) #Statement
+        logging.debug("THIS: ")
+        logging.debug(p[3])
+        logging.debug(p[5])
+        logging.debug(p[7].type)
+        
+        p[0] = Node
+        logging.debug("-------In iterationstatement (foreach loop)-------")
+        
+    
 def p_selStatement(p):
     '''selectionstatement : IF LPAREN expression RPAREN compoundstatement
                             | IF LPAREN expression RPAREN compoundstatement ELSE compoundstatement'''
@@ -633,7 +652,7 @@ def p_assignval(p):
                             | ID '=' SQRBEGIN SQREND'''
 
 
-    #ids[p[1]] = p[3]
+    #helper.ids[p[1]] = p[3]
     logging.debug("-------In assignExpr-------")
 
     node = ast.ASTNode()
@@ -1060,7 +1079,7 @@ def inToOutLinks(sources):
                 link["weight"] = ''
             links.append(link)
     return links
-
+    
 def evaluateAST(a):
 
     global ids
@@ -1200,14 +1219,14 @@ def evaluateAST(a):
     if(a.type == "assignment"):
         logging.debug(a.children[0])
         logging.debug(a.children[1])
-        ids[a.children[0]]= evaluateAST(a.children[1]).value
-        logging.info('Assigned '+str(ids[a.children[0]])+' to '+str(a.children[0])+' of type '+str(type(ids[a.children[0]])))
+        helper.ids[a.children[0]]= evaluateAST(a.children[1]).value
+        logging.info('Assigned '+str(helper.ids[a.children[0]])+' to '+str(a.children[0])+' of type '+str(type(helper.ids[a.children[0]])))
         return
 
     if(a.type == "addedge"):
         logging.debug("------argEdge-----")
-        curr =  ids[a.children[0]].get_data()
-        shadow = ids[a.children[0]].get_shadow()
+        curr =  helper.ids[a.children[0]].get_data()
+        shadow = helper.ids[a.children[0]].get_shadow()
         if a.children[1].value in curr.keys():
             curr[a.children[1].value][a.children[3].value]={"__connector__":a.children[2]}
         else:
@@ -1217,13 +1236,13 @@ def evaluateAST(a):
         except KeyError, e:
             shadow[a.children[3].value] = { a.children[1].value : None }
         
-        ids[a.children[0]].edgeList=curr
+        helper.ids[a.children[0]].edgeList=curr
         return
 
     if(a.type == "removenode"):
         logging.debug("------noderemoval-----")
-        links =  ids[a.children[0]].get_data()
-        shadow = ids[a.children[0]].get_shadow()
+        links =  helper.ids[a.children[0]].get_data()
+        shadow = helper.ids[a.children[0]].get_shadow()
 
         nodes =  evaluateAST(a.children[1]).value
         for node in nodes:
@@ -1249,8 +1268,8 @@ def evaluateAST(a):
                 for p in pop_cleanup:
                     shadow.pop(p, None)
                 shadow.pop(node_id_to_be_removed, None)
-        ids[a.children[0]].edgeList=links
-        ids[a.children[0]].shadowEdgeList=shadow
+        helper.ids[a.children[0]].edgeList=links
+        helper.ids[a.children[0]].shadowEdgeList=shadow
         return
 
     if(a.type == "lookupnode"):
@@ -1282,13 +1301,13 @@ def evaluateAST(a):
         node = ast.ASTNode()
         node.type = "terminal"
         try:
-            node.value = getattr(ids[a.children[0]],a.children[1])(*evaluateAST(a.children[2].value).value)
+            node.value = getattr(helper.ids[a.children[0]],a.children[1])(*evaluateAST(a.children[2].value).value)
             return node
         except KeyError, e:
             logging.error("Unknown variable"+str(a.children[0]))
             gexit()
 
-        logging.info('Assigned '+str(ids[a.children[0]])+' to '+str(a.children[0]))
+        logging.info('Assigned '+str(helper.ids[a.children[0]])+' to '+str(a.children[0]))
         return
 
     if(a.type == "listassignment"):
@@ -1322,7 +1341,7 @@ def evaluateAST(a):
         node = ast.ASTNode()
         node.type = "list"
         node.value = listValues
-        ids[a.children[0]] = node
+        helper.ids[a.children[0]] = node
         return
 
 
@@ -1333,13 +1352,13 @@ def evaluateAST(a):
 
     if(a.type == "addedge"):
            logging.debug("------argEdge-----")
-           curr =  ids[a.children[0]].get_data()
+           curr =  helper.ids[a.children[0]].get_data()
            if a.children[1].value in curr.keys():
                curr[a.children[1].value][a.children[3].value]={"__connector__":a.children[2]}
            else:
                curr[a.children[1].value] = {a.children[3].value : {"__connector__":a.children[2]}}
-           ids[a.children[0]].edgelist=curr
-           print ids[a.children[0]].edgelist
+           helper.ids[a.children[0]].edgelist=curr
+           print helper.ids[a.children[0]].edgelist
            return
 
     if(a.type == "funccall"):
@@ -1349,21 +1368,19 @@ def evaluateAST(a):
         node.type="terminal"
         args = []
         if isinstance(a.children[0],ast.ASTNode):
-            if "__global__" in ids.keys():
-                caller_local = lib.modified_dict(ids)
-                caller_local.pop("__global__", None)
-                ids = lib.modified_dict({"__global__": ids["__global__"], "__caller_local__" : caller_local})
-            else:
-                ids = lib.modified_dict({"__global__": ids})
+            #Packing
+            scope_in()
+            #End packing
+            
             numArgs = len(a.children[1].children)
             
             if a.children[1].children[0] == None:
                 numArgs = 0
             
             for i in range(0,numArgs):
-                ids[a.children[1].children[i]]= evaluateAST(a.children[3].value).value[i]
-                logging.info('Assigned '+str(a.children[1].children[i])+' to '+str(ids[a.children[1].children[i]])+' inside funccall')
-            logging.debug("MODIFIED scope: Before call:",ids)
+                helper.ids[a.children[1].children[i]]= evaluateAST(a.children[3].value).value[i]
+                logging.info('Assigned '+str(a.children[1].children[i])+' to '+str(helper.ids[a.children[1].children[i]])+' inside funccall')
+            logging.debug("MODIFIED scope: Before call:",helper.ids)
             evaluateAST(a.children[0])
             node.value = []
 
@@ -1371,13 +1388,10 @@ def evaluateAST(a):
                 for ret in a.children[2].children:
                     node.value.append(evaluateAST(ret))
             
-            if "__caller_local__" in ids.keys():
-                __global = ids["__global__"]
-                ids = ids["__caller_local__"]
-                ids["__global__"] = __global
-            else:
-                ids = ids["__global__"]
-            logging.debug("MODIFIED scope: After call:",ids)
+            #Unpacking
+            scope_out()
+            #End unpacking
+            logging.debug("MODIFIED scope: After call:",helper.ids)
         else:    
             if len(a.children) > 1:
                 node.value=a.children[0](*evaluateAST(a.children[1].value).value)
@@ -1390,7 +1404,6 @@ def evaluateAST(a):
                 pass
 
         return node
-
 
         # #User-defined functions
         # if len(a.children):
@@ -1417,8 +1430,8 @@ def evaluateAST(a):
 
         #     numArgs = len(a.children[1].children)
         #     for i in range(0,numArgs):
-        #         funcIds[a.children[1].children[i]]= evaluateAST(a.children[3].value).value[i]
-        #         logging.info('Assigned '+str(a.children[1].children[i])+' to '+str(funcIds[a.children[1].children[i]])+' inside funccall')
+        #         funchelper.ids[a.children[1].children[i]]= evaluateAST(a.children[3].value).value[i]
+        #         logging.info('Assigned '+str(a.children[1].children[i])+' to '+str(funchelper.ids[a.children[1].children[i]])+' inside funccall')
 
 
         #     node = ast.ASTNode()
@@ -1450,7 +1463,7 @@ def evaluateAST(a):
         #     node.type="terminal"
         #     node.value=evaluateAST(a.children[0])
         #     return node
-
+    
     if(a.type == "sequence"):
         return evaluateAST(a.children[0])
 
@@ -1458,10 +1471,10 @@ def evaluateAST(a):
         node=ast.ASTNode()
         node.type="terminal"
         try:
-            if a.children[0] in ids:
-                node.value = ids[a.children[0]]
+            if a.children[0] in helper.ids:
+                node.value = helper.ids[a.children[0]]
             else:
-                node.value=ids[a.children[0]]
+                node.value=helper.ids[a.children[0]]
         except KeyError, e:
             logging.critical("Unknown variable: '"+str(a.children[0])+"'")
             sys.exit(-1)
@@ -1490,7 +1503,7 @@ def evaluateAST(a):
                     logging.error("Destination Node #"+str(destination)+"not found.")
                     sys.exit(0)
 
-        ids[a.children[0].value] = new_graph
+        helper.ids[a.children[0].value] = new_graph
 
         # new_graph.print_data()
         return
@@ -1528,9 +1541,26 @@ def evaluateAST(a):
 
         while (evaluateAST(a.children[1]).value != 0): # Check condition
             evaluateAST(a.children[3]) # Evaluate statement
-            evaluateAST(a.children[4]) # Evaluate statement
             evaluateAST(a.children[2]) # Update loop statement
-
+            
+    if(a.type == 'foreach'):
+        logging.debug("evaluateAST of foreach")
+        logging.debug("*********************")
+        logging.debug(evaluateAST(a.children[0]))
+        logging.debug("*********************")
+        iterVar = 0
+        
+        helper.scope_in()
+        
+        while iterVar < len(evaluateAST(helper.ids[a.children[1]])):
+            logging.debug(helper.ids[a.children[1]])
+            helper.ids[a.children[0]] = evaluateAST(helper.ids[a.children[1]])[iterVar] #Update iterVariable
+            logging.debug('Evaluating foreach statement')
+            evaluateAST(a.children[2]) #evaluate child statement
+            iterVar += 1 #increment index of iterVar
+        
+        helper.scope_out()
+        
 
 while True:
     try:
