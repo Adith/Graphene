@@ -612,8 +612,8 @@ def p_assignval(p):
 
     node = ast.ASTNode()
     if len(p) == 6:
-        # node.type = "listassignment"
-        node.type="assignment"
+        node.type = "listassignment"
+        # node.type="assignment"
         node.children.append(p[1])
         node.children.append(p[4])
 
@@ -637,7 +637,7 @@ def p_assignval(p):
 def p_values(p):
     '''values : valuelist'''
     node = ast.ASTNode()
-    node.type = "terminal"
+    node.type = "values"
     values = []
     for i in range(0,len(p[1].children)):
         values.append(p[1].children[i])
@@ -1057,6 +1057,10 @@ def evaluateAST(a):
         logging.debug("Terminal value: "+str(a.value))
         return a
 
+    if(a.type == "values"):
+        logging.debug("Terminal value: "+str(a.value))
+        return a
+
     if(a.type == "edgelist"):
         a.value = {}
         child_edge_list = {}
@@ -1162,39 +1166,47 @@ def evaluateAST(a):
         logging.debug(a.children[0])
         logging.debug(a.children[1])
         ids[a.children[0]]= evaluateAST(a.children[1]).value
-        # print(ids[a.children[0]][0].value)
-        # if isinstance(ids[a.children[0]], list):
-        #     if ids[a.children[0]][0].type == 'id':
-                #ids[a.children[0]] = evaluateAST(evaluateAST(a.children[1]))
-                # print  evaluateAST(evaluateAST(evaluateAST(a.children[1])).value)
-                # temp = evaluateAST(evaluateAST(evaluateAST(a.children[1])).value)
-                # print temp
-                # if isinstance(temp, list):
-                #     for t in temp:
-                #         if isinstance(t,list):
-                #             print "INTENAL LIST DETECTED"
-                #         else:
-                #             print "NO INTERNAL LIST"
-
-                # print evaluateAST(evaluateAST(evaluateAST(a.children[1])).value)
-                # print"LIST LIST LIST"
         logging.info('Assigned '+str(ids[a.children[0]])+' to '+str(a.children[0]))
         return
 
     if(a.type == "listassignment"):
-        logging.debug(a.children[0])
-        logging.debug(a.children[1])
-        ids[a.children[0]]= evaluateAST(a.children[1])
+        logging.debug("--- list assignment ---")
+        ids[a.children[0]]= evaluateAST(a.children[1]).value
+        temp = evaluateAST(a.children[1]).value
+
+        listValues = []
+        for t in temp:
+
+            if t.type == "terminal":
+                listValues.append(t)
+
+            if t.type == "id" and isinstance(evaluateAST(t).value,ast.ASTNode):
+                if isinstance(evaluateAST(t).value.value,list):
+                    ttemp = evaluateAST(t).value.value
+                    innerList = []
+                    for tt in ttemp:
+                        innerList.append(tt.value)
+                    n = ast.ASTNode()
+                    n.type = "terminal"
+                    n.value = innerList
+                    listValues.append(n)
+
+            elif t.type == "id":
+                n = ast.ASTNode()
+                n.type = "terminal"
+                n.value = evaluateAST(t).value
+                listValues.append(n)
+
+        node = ast.ASTNode()
+        node.type = "list"
+        node.value = listValues
+        ids[a.children[0]] = node
         return
 
-    if(a.type == "valuelist"):
-        node=ast.ASTNode()
-        listElements = []
-        for i in range(0,len(a.children)):
-            listElements.append(i)
-        node.type="terminal"
-        node.value = listElements
-        return node
+    if(a.type == 'list'):
+        logging.debug("Terminal value: "+str(a.value))
+        return evaluateAST(a.value)
+
 
     if(a.type == "addedge"):
            logging.debug("------argEdge-----")
