@@ -606,16 +606,25 @@ def p_expression(p):
 def p_assignval(p):
     '''assignmentexpression : ID '=' expression
                             | ID '=' call 
-                            | ID '=' SQRBEGIN values SQREND'''
+                            | ID '=' SQRBEGIN values SQREND
+                            | ID '=' SQRBEGIN SQREND'''
+
     #ids[p[1]] = p[3]
     logging.debug("-------In assignExpr-------")
 
     node = ast.ASTNode()
     if len(p) == 6:
         node.type = "listassignment"
-        # node.type="assignment"
         node.children.append(p[1])
         node.children.append(p[4])
+
+    elif len(p) == 5:
+        n = ast.ASTNode()
+        n.type = "values"
+        n.children.append(None)
+        node.type = "listassignment"
+        node.children.append(p[1])
+        node.children.append(n)
 
     else:
         node.type="assignment"
@@ -1171,37 +1180,38 @@ def evaluateAST(a):
 
     if(a.type == "listassignment"):
         logging.debug("--- list assignment ---")
-        ids[a.children[0]]= evaluateAST(a.children[1]).value
-        temp = evaluateAST(a.children[1]).value
-
         listValues = []
-        for t in temp:
 
-            if t.type == "terminal":
-                listValues.append(t)
+        if len(a.children[1].children) == 0:
+            temp = evaluateAST(a.children[1]).value
+            for t in temp:
 
-            if t.type == "id" and isinstance(evaluateAST(t).value,ast.ASTNode):
-                if isinstance(evaluateAST(t).value.value,list):
-                    ttemp = evaluateAST(t).value.value
-                    innerList = []
-                    for tt in ttemp:
-                        innerList.append(tt.value)
+                if t.type == "terminal":
+                    listValues.append(t)
+
+                if t.type == "id" and isinstance(evaluateAST(t).value,ast.ASTNode):
+                    if isinstance(evaluateAST(t).value.value,list):
+                        ttemp = evaluateAST(t).value.value
+                        innerList = []
+                        for tt in ttemp:
+                            innerList.append(tt.value)
+                        n = ast.ASTNode()
+                        n.type = "terminal"
+                        n.value = innerList
+                        listValues.append(n)
+
+                elif t.type == "id":
                     n = ast.ASTNode()
                     n.type = "terminal"
-                    n.value = innerList
+                    n.value = evaluateAST(t).value
                     listValues.append(n)
-
-            elif t.type == "id":
-                n = ast.ASTNode()
-                n.type = "terminal"
-                n.value = evaluateAST(t).value
-                listValues.append(n)
 
         node = ast.ASTNode()
         node.type = "list"
         node.value = listValues
         ids[a.children[0]] = node
         return
+
 
     if(a.type == 'list'):
         logging.debug("Terminal value: "+str(a.value))
