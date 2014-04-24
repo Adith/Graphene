@@ -160,7 +160,6 @@ def strlen(node):
 
 def gprint(*node):
     logging.debug('******print******')
-
     for e in node:
         if type(e).__bases__[0].__name__ in ["Node"]:
             print "Node has"
@@ -630,7 +629,9 @@ def p_assignval(p):
                             | ID '=' call 
                             | ID '=' nodeLookup
                             | ID '=' SQRBEGIN values SQREND
-                            | ID '=' SQRBEGIN SQREND'''
+                            | ID '=' SQRBEGIN SQREND
+                            | ID '=' ID SQRBEGIN SQREND
+                            | ID '=' ID SQRBEGIN idOrAlphanum SQREND'''
 
 
     #ids[p[1]] = p[3]
@@ -649,6 +650,15 @@ def p_assignval(p):
         node.type = "listassignment"
         node.children.append(p[1])
         node.children.append(n)
+
+    elif len(p) == 7:
+        node.type = "indexassignment"
+        node.children.append(p[1])
+        termNode = ast.ASTNode()
+        termNode.type = "terminal"
+        termNode.value = p[3]
+        node.children.append(termNode)
+        node.children.append(p[5])
 
     else:
         node.type="assignment"
@@ -1077,7 +1087,11 @@ def evaluateAST(a):
     if(isinstance(a,list)):
         ret = []
         for e in a:
-            ret.append(evaluateAST(e).value)
+            val = evaluateAST(e)
+            if isinstance(val, ast.ASTNode):
+                ret.append(evaluateAST(e).value)
+            else:
+                ret.append(val)
         return ret
 
     logging.debug("Evaluating type: "+str(a.type))
@@ -1282,7 +1296,17 @@ def evaluateAST(a):
         node = ast.ASTNode()
         node.type = "terminal"
         try:
-            node.value = getattr(ids[a.children[0]],a.children[1])(*evaluateAST(a.children[2].value).value)
+            if isinstance(ids[a.children[0]],ast.ASTNode):
+                # print evaluateAST(ids[a.children[0]])
+                if len(a.children) <= 2:
+                    node.value = getattr(lib.modified_list(evaluateAST(ids[a.children[0]])),a.children[1])()
+                else: 
+                    node.value = getattr(ids[a.children[0]].value,a.children[1])(evaluateAST(a.children[2].value).value)
+            else:
+                if len(a.children) <= 2:
+                    node.value = getattr(ids[a.children[0]],a.children[1])()
+                else:
+                    node.value = getattr(ids[a.children[0]],a.children[1])(*evaluateAST(a.children[2].value).value)
             return node
         except KeyError, e:
             logging.error("Unknown variable"+str(a.children[0]))
@@ -1300,7 +1324,7 @@ def evaluateAST(a):
             for t in temp:
 
                 if t.type == "terminal":
-                    listValues.append(t)
+                    listValues.append(t) 
 
                 if t.type == "id" and isinstance(evaluateAST(t).value,ast.ASTNode):
                     if isinstance(evaluateAST(t).value.value,list):
@@ -1319,17 +1343,30 @@ def evaluateAST(a):
                     n.value = evaluateAST(t).value
                     listValues.append(n)
 
+        nlistValues = lib.modified_list(listValues)
         node = ast.ASTNode()
         node.type = "list"
-        node.value = listValues
+        node.value = nlistValues
         ids[a.children[0]] = node
         return
 
 
     if(a.type == 'list'):
-        logging.debug("Terminal value: "+str(a.value))
+        logging.debug("List value: "+str(a.value))
         return evaluateAST(a.value)
 
+    if(a.type == 'indexassignment'):
+        logging.debug("--- index assignment ---")
+        value = evaluateAST(ids[evaluateAST(a.children[1]).value])[evaluateAST(a.children[2]).value]
+        if isinstance(value,list):
+            node = ast.ASTNode()
+            node.type = "list"
+            nlistValues = lib.modified_list(value)
+            node.value = nlistValues
+            ids[a.children[0]] = node
+        else:
+            ids[a.children[0]] = value
+        return
 
     if(a.type == "addedge"):
            logging.debug("------argEdge-----")
@@ -1339,7 +1376,6 @@ def evaluateAST(a):
            else:
                curr[a.children[1].value] = {a.children[3].value : {"__connector__":a.children[2]}}
            ids[a.children[0]].edgelist=curr
-           print ids[a.children[0]].edgelist
            return
 
     if(a.type == "funccall"):

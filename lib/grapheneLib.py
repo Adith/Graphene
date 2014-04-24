@@ -31,15 +31,21 @@ class modified_dict(dict):
 				raise KeyError
 		return val
 
-class modified_dict(dict):
-	def __getitem__(self, key):
-		try:
-			val = dict.__getitem__(self, key)
-			logging.info("Retrieved from local scope")
-		except KeyError, e:
-			val = dict.__getitem__(self["__global__"], key)
-			logging.info("Retrieved from global scope")
-		return val
+class modified_list(list):
+	def __init__(self,arg = None):
+		self.len = 0
+		if arg!=None:
+			super(modified_list, self).extend(arg)
+			self.len = len(arg)
+
+	def append(self,item):
+		for i in item:
+			super(modified_list, self).append(i)
+		self.len = self.len + 1
+
+	def length(self):
+		return self.len
+
 
 class Node(object):
 	'''Internal representation of the node type'''
