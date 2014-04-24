@@ -41,7 +41,7 @@ function=dict()
 
 NumberTypes = (types.IntType, types.LongType, types.FloatType, types.ComplexType)
 
-tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'WHITESPACE', 'COMMA', 'GR', 'LS', 'NODE', 'EDGE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR')
+tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR')
 literals = [';', '=', '+', '-', '*', '/']
 t_GR = r'\>'
 t_LS = r'\<'
@@ -70,6 +70,10 @@ t_CURLBEGIN = r'{'
 
 t_CURLEND = r'}'
 
+t_SQRBEGIN = r'\['
+
+t_SQREND = r'\]'
+
 t_DOT = r'\.'
 
 t_COLON = r':'
@@ -97,8 +101,6 @@ t_STRING = r'[\"|\'][a-zA-Z\ 0-9]*[\"|\']'
 t_COMMA = r','
 
 t_NODE = r'Node'
-
-t_EDGE = r'Edge'
 
 t_GRAPH = r'Graph'
 
@@ -210,11 +212,10 @@ def goutput(graph=None):
     logging.debug("nodes:"+str(nodes))
     logging.debug("links:"+str(graphs))
 
+
     # Dump json to file
     with open('./proc/state.json', 'w') as outfile:
         json.dump({"nodes":nodes, "lastNodeId": len(nodes)-1, "links": graphs}, outfile)
-
-    # print {"nodes":nodes, "lastNodeId": len(nodes)-1, "links": graphs}
 
     gui.output()
 
@@ -233,7 +234,6 @@ def ginput():
 
     input = json.loads(input)
 
-    # print json.dumps(input, indent=4, sort_keys=True)
     lib.graphList[len(lib.graphList)+1] = lib.Graph(outToInLinks(input['links']))
 
     # Unfortunately, we have to decide whether to create a template node class or one for EVERY node in input. This one does the former.
@@ -528,7 +528,6 @@ def p_statement(p):
 
     p[0]=p[1]
 
-
 def p_edgeexpression(p):
     '''edgeaddition : ID '+' idOrAlphanum CONNECTOR idOrAlphanum'''
     logging.debug("-------In edgeaddition-------")
@@ -563,6 +562,7 @@ def p_node_lookup(p):
         node.children.append(p[1])
         node.children.append(p[3])
     p[0] = node
+
 
 def p_iterationstatement(p):
     '''iterationstatement : WHILE LPAREN expression RPAREN statement
@@ -615,6 +615,7 @@ def p_expression(p):
                   | assignmentexpression
                   | edgeaddition
                   | noderemoval'''
+
     logging.debug("expr")
     p[0] = p[1]
     logging.debug(p[0].type)
@@ -628,16 +629,75 @@ def p_expression(p):
 def p_assignval(p):
     '''assignmentexpression : ID '=' expression
                             | ID '=' call 
-                            | ID '=' nodeLookup'''
+                            | ID '=' nodeLookup
+                            | ID '=' SQRBEGIN values SQREND
+                            | ID '=' SQRBEGIN SQREND'''
+
+
     #ids[p[1]] = p[3]
+    logging.debug("-------In assignExpr-------")
+
     node = ast.ASTNode()
-    node.type="assignment"
-    node.children.append(p[1])
-    node.children.append(p[3])
+    if len(p) == 6:
+        node.type = "listassignment"
+        node.children.append(p[1])
+        node.children.append(p[4])
+
+    elif len(p) == 5:
+        n = ast.ASTNode()
+        n.type = "terminal"
+        n.children.append(None)
+        node.type = "listassignment"
+        node.children.append(p[1])
+        node.children.append(n)
+
+    else:
+        node.type="assignment"
+        node.children.append(p[1])
+        node.children.append(p[3])
+        logging.info('assigned '+str(p[1]))
+
     p[0] = node
 
-    logging.debug("-------In assignExpr-------")
-    logging.info('assigned '+str(p[1]))
+# def p_expression_string(p):
+#     '''expression : STRING'''
+#     logging.debug("p_expressionString")
+#     termNode = ast.ASTNode()
+#     termNode.type = "terminal"
+#     termNode.value = p[1][1:-1]
+#     p[0] = termNode
+#     logging.debug(p[0].type)
+
+def p_values(p):
+    '''values : valuelist'''
+    node = ast.ASTNode()
+    node.type = "terminal"
+    values = []
+    for i in range(0,len(p[1].children)):
+        values.append(p[1].children[i])
+    node.value = values
+    p[0] = node
+    logging.debug(p[0].type)
+    
+
+def p_valueList(p):
+    '''valuelist : idOrAlphanum COMMA valuelist
+                | idOrAlphanum'''
+
+    logging.debug("valuelist")
+
+    vallistNode = ast.ASTNode()
+    vallistNode.type = "valuelist"
+
+    vallistNode.children.append(p[1])
+
+    if len(p) > 2:
+        for i in range (0,len(p[3].children)):
+            vallistNode.children.append(p[3].children[i])
+
+    p[0] = vallistNode
+    logging.debug(p[0].type)
+
 
 ##def p_Type(p):
 ##    "Type : primitivetype"
@@ -812,7 +872,10 @@ def p_expression_number(p):
     logging.debug("p_expressionNumber")
     termNode = ast.ASTNode()
     termNode.type = "terminal"
-    termNode.value = int(p[1])
+    if '.' in p[1]:
+        termNode.value = float(p[1])
+    else:
+        termNode.value = int(p[1])
     p[0] = termNode
     logging.debug(p[0].type)
 
@@ -857,7 +920,6 @@ def p_call(p):
                 child.type = 'arglist'
                 child.value = p[5]
                 node.children.append(child)
-
         else:
             try:
                 logging.debug("****inbuilt****")
@@ -985,7 +1047,6 @@ def inToOutNodes(nodeL):
 
 def inToOutLinks(sources):
     links = []
-    print sources, targets
     for source, targets in sources.iteritems():
         for target,properties in targets.iteritems():
             link = {'source': int(source), 'target' :int(target), 'right':True }
@@ -1004,10 +1065,14 @@ def inToOutLinks(sources):
 def evaluateAST(a):
 
     global ids
+
     if(isinstance(a,basestring)):
         return a
 
-    if(isinstance(a,decimal.Decimal)):
+    if(isinstance(a,int)):
+        return a
+
+    if(isinstance(a,float)):
         return a
 
     if(isinstance(a,list)):
@@ -1027,6 +1092,10 @@ def evaluateAST(a):
     if(a.type == "terminal"):
         logging.debug("Terminal value: "+str(a.value))
         return a
+
+    # if(a.type == "values"):
+    #     logging.debug("Terminal value: "+str(a.value))
+        # return a
 
     if(a.type == "edgelist"):
         a.value = {}
@@ -1199,8 +1268,11 @@ def evaluateAST(a):
                 return result
             key = key.value
             for id,node in lib.nodeList.iteritems():
-                if node.get_data()[key] == value:
-                    nodeSet.append(node)
+                data = node.get_data()
+                if key in data: 
+                    if data[key] == value:
+                        nodeSet.append(node)
+            result.value = nodeSet
             return result
         except KeyError, e:
             logging.critical("Node not found")
@@ -1219,6 +1291,60 @@ def evaluateAST(a):
         except KeyError, e:
             logging.error("Unknown variable"+str(a.children[0]))
             gexit()
+
+        logging.info('Assigned '+str(ids[a.children[0]])+' to '+str(a.children[0]))
+        return
+
+    if(a.type == "listassignment"):
+        logging.debug("--- list assignment ---")
+        listValues = []
+
+        if len(a.children[1].children) == 0:
+            temp = evaluateAST(a.children[1]).value
+            for t in temp:
+
+                if t.type == "terminal":
+                    listValues.append(t)
+
+                if t.type == "id" and isinstance(evaluateAST(t).value,ast.ASTNode):
+                    if isinstance(evaluateAST(t).value.value,list):
+                        ttemp = evaluateAST(t).value.value
+                        innerList = []
+                        for tt in ttemp:
+                            innerList.append(tt.value)
+                        n = ast.ASTNode()
+                        n.type = "terminal"
+                        n.value = innerList
+                        listValues.append(n)
+
+                elif t.type == "id":
+                    n = ast.ASTNode()
+                    n.type = "terminal"
+                    n.value = evaluateAST(t).value
+                    listValues.append(n)
+
+        node = ast.ASTNode()
+        node.type = "list"
+        node.value = listValues
+        ids[a.children[0]] = node
+        return
+
+
+    if(a.type == 'list'):
+        logging.debug("Terminal value: "+str(a.value))
+        return evaluateAST(a.value)
+
+
+    if(a.type == "addedge"):
+           logging.debug("------argEdge-----")
+           curr =  ids[a.children[0]].get_data()
+           if a.children[1].value in curr.keys():
+               curr[a.children[1].value][a.children[3].value]={"__connector__":a.children[2]}
+           else:
+               curr[a.children[1].value] = {a.children[3].value : {"__connector__":a.children[2]}}
+           ids[a.children[0]].edgelist=curr
+           print ids[a.children[0]].edgelist
+           return
 
     if(a.type == "funccall"):
         logging.debug('-----eval: call----')
