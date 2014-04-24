@@ -417,9 +417,11 @@ def p_compoundstatementdef(p):
     '''compoundstatement : CURLBEGIN statementlist CURLEND
                          | CURLBEGIN CURLEND '''
     if len(p)==4:
-       p[0] = p[2]
+       p[0] = ast.ASTNode()
+       p[0].type = 'compoundstatement'
+       p[0].children.append(p[2])
     else:
-        p[0]=[]
+        p[0]=None
 
 ######### function def #########################
 
@@ -514,7 +516,8 @@ def p_statementlist(p):
     node.type = "statementlist";
     node.children.append(p[1]);
     if len(p)==3:
-        node.children.append(p[2]);
+        logging.debug('Statement list... appending children of statementlist to current statementlist')
+        node.children.extend(p[2].children);
     p[0]=node
 
     logging.debug(p[0].type)
@@ -569,7 +572,7 @@ def p_node_lookup(p):
 def p_iterationstatement(p):
     '''iterationstatement : WHILE LPAREN expression RPAREN statement
                           | FOR LPAREN statement expression ';' statement RPAREN CURLBEGIN statement CURLEND
-                          | FOREACH LPAREN ID IN ID RPAREN statement'''
+                          | FOREACH LPAREN ID IN ID RPAREN CURLBEGIN statementlist CURLEND'''
 
     if ( p[1] == 'while' ):
         Node = ast.ASTNode()
@@ -595,11 +598,11 @@ def p_iterationstatement(p):
         Node.type = 'foreach'
         Node.children.append(p[3]) #Iter variable
         Node.children.append(p[5]) #Iter list
-        Node.children.append(p[7]) #Statement
+        Node.children.append(p[8]) #Statement
         logging.debug("THIS: ")
         logging.debug(p[3])
         logging.debug(p[5])
-        logging.debug(p[7].type)
+        logging.debug(p[8].type)
         
         p[0] = Node
         logging.debug("-------In iterationstatement (foreach loop)-------")
@@ -1103,7 +1106,9 @@ def evaluateAST(a):
 
     if(a.type =="statementlist"):
         a.value = []
+        logging.debug('Evaluating a list of statements')
         for e in a.children:
+            logging.debug('Evaluating a statement in it...')
             evaluateAST(e)
         return a
 
@@ -1369,7 +1374,7 @@ def evaluateAST(a):
         args = []
         if isinstance(a.children[0],ast.ASTNode):
             #Packing
-            scope_in()
+            #scope_in() #Commented because it should now be handled by scoping in and out by compoundstatement evaluation
             #End packing
             
             numArgs = len(a.children[1].children)
@@ -1389,7 +1394,7 @@ def evaluateAST(a):
                     node.value.append(evaluateAST(ret))
             
             #Unpacking
-            scope_out()
+            #scope_out() #Refer above at scope_in() call
             #End unpacking
             logging.debug("MODIFIED scope: After call:",helper.ids)
         else:    
@@ -1405,6 +1410,13 @@ def evaluateAST(a):
 
         return node
 
+        
+    if (a.type == 'compoundstatement'):
+        logging.debug('Evaluating compound statement...')
+        helper.scope_in()
+        evaluateAST(a.children[0])
+        helper.scope_out()
+        
         # #User-defined functions
         # if len(a.children):
         #     # Number of formal arguments - len(a.children[1].children)
@@ -1556,7 +1568,7 @@ def evaluateAST(a):
             logging.debug(helper.ids[a.children[1]])
             helper.ids[a.children[0]] = evaluateAST(helper.ids[a.children[1]])[iterVar] #Update iterVariable
             logging.debug('Evaluating foreach statement')
-            evaluateAST(a.children[2]) #evaluate child statement
+            evaluateAST(a.children[2]) #evaluate child compoundstatement
             iterVar += 1 #increment index of iterVar
         
         helper.scope_out()

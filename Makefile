@@ -1,3 +1,3 @@
 all:
-	python graphene.py $0
+	python graphene.py -d
 	
