@@ -171,7 +171,10 @@ def gprint(*node):
             print "}"
         elif isinstance(e,list):
             for v in e:
-                gprint(v)
+                if isinstance(v, ast.ASTNode):
+                    gprint(evaluateAST(v).value)
+                else:
+                    gprint(v)
         else:
             print evaluateAST(e)
 
@@ -610,7 +613,7 @@ def p_expressionstatement(p):
         logging.debug(p[0].type)
 
 def p_expression(p):
-    '''completeexpression : call
+    '''completeexpression : callchain
                   | assignmentexpression
                   | edgeaddition
                   | noderemoval'''
@@ -627,7 +630,7 @@ def p_expression(p):
 
 def p_assignval(p):
     '''assignmentexpression : ID '=' expression
-                            | ID '=' call 
+                            | ID '=' callchain
                             | ID '=' nodeLookup
                             | ID '=' SQRBEGIN values SQREND
                             | ID '=' SQRBEGIN SQREND
@@ -903,7 +906,17 @@ def p_expression_name(p):
 
 #################################
 
-
+def p_callchain(p):
+    '''callchain : call 
+                 | callchain DOT call'''
+    print("callchain function:"+str(p[1].children))
+    node = ast.ASTNode()
+    node.type = "callchain"
+    node.children.append(p[1])
+    if len(p) > 2:
+        node.children.append(p[3])
+        print "p[1]:",p[1].children[0].children,"p[3]:",p[3]
+    p[0] = node
 
 def p_call(p):
     '''call : ID LPAREN arglist RPAREN
@@ -923,8 +936,8 @@ def p_call(p):
         if(len(p) >= 6):
             node.type = "member_funccall"
 
-            node.children.append(p[1])
-            node.children.append(p[3])
+            node.children.append(p[1])      #object
+            node.children.append(p[3])      #member function
             if len(p) ==7:
                 child = ast.ASTNode()
                 child.type = 'arglist'
@@ -959,7 +972,7 @@ def p_call(p):
 
     except:
         logging.error("Function not found. Please replace developer")
-        logging.debug(p[0])
+        logging.error("Offending function: "+p[1])
 
 def p_arg(p):
     '''arglist : idOrAlphanum COMMA arglist
@@ -1379,6 +1392,27 @@ def evaluateAST(a):
                curr[a.children[1].value] = {a.children[3].value : {"__connector__":a.children[2]}}
            ids[a.children[0]].edgelist=curr
            return
+
+    if(a.type == "callchain"):
+        logging.debug('-----eval: callchain----')
+        ret = evaluateAST(a.children[0])
+        print "return: ",ret.value
+        if len(a.children) > 1:
+            print a.children
+            node = ast.ASTNode()
+            node.type = "member_funccall"
+            node.children.append(ret.value)                #object
+            print a.children[1].value
+            node.children.append(a.children[1].children[0])      #member function
+            if len(a.children[1]) >1:
+                child = ast.ASTNode()
+                child.type = 'arglist'
+                child.value = a.children[1][1]
+                node.children.append(child)
+            print node
+            return evaluateAST(node)
+        return ret
+
 
     if(a.type == "funccall"):
         logging.debug('-----eval: call----')

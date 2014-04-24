@@ -116,8 +116,7 @@ class Graph:
 		nodes = []
 		for n in nodeIds:
 			nodes.append(nodeList[n])
-		print nodes
-		return
+		return nodes
 
 	def getAdjacent(self, node):
 		adjacent = []
