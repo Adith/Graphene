@@ -89,7 +89,21 @@ class Graph:
 	def get_shadow(self):
 		return self.shadowEdgeList
 
-	def get_adjacent(self, node):
+	def getNodes(self):
+		nodeIds = []
+		for n in self.edgeList:
+			if n not in nodeIds:
+				nodeIds.append(n)
+		for n in self.shadowEdgeList:
+			if n not in nodeIds:
+				nodeIds.append(n)
+		nodes = []
+		for n in nodeIds:
+			nodes.append(nodeList[n])
+		print nodes
+		return
+
+	def getAdjacent(self, node):
 		adjacent = []
 		if node in self.shadowEdgeList:
 			for adjacent_id in self.shadowEdgeList[node]:
