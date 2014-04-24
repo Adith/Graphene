@@ -9,7 +9,7 @@
 #    ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝
 # Error handling - exit table
 
-#import readline
+import readline
 import ply.yacc as yacc
 import ply.lex as lex
 import os, sys
@@ -160,13 +160,16 @@ def gprint(*node):
     logging.debug('******print******')
 
     for e in node:
-
         if type(e).__bases__[0].__name__ in ["Node"]:
             print "Node has"
             e.print_data();
         elif isinstance(e, lib.Graph):
-            print "Graph has"
+            print "Graph has {"
             e.print_data();
+            print "}"
+        elif isinstance(e,list):
+            for v in e:
+                gprint(v)
         else:
             print evaluateAST(e)
 
@@ -203,8 +206,8 @@ def goutput(graph=None):
         nodes = inToOutNodes(graph_nodelist)
 
     # Nodes and Links converted from IR to json
-    logging.debug("nodes:", str(nodes))
-    logging.debug("links:", str(graphs))
+    logging.debug("nodes:"+str(nodes))
+    logging.debug("links:"+str(graphs))
 
     # Dump json to file
     with open('./proc/state.json', 'w') as outfile:
@@ -230,7 +233,6 @@ def ginput():
     input = json.loads(input)
 
     # print json.dumps(input, indent=4, sort_keys=True)
-    print input
     lib.graphList[len(lib.graphList)+1] = lib.Graph(outToInLinks(input['links']))
 
     # Unfortunately, we have to decide whether to create a template node class or one for EVERY node in input. This one does the former.
@@ -287,7 +289,6 @@ def p_declaration(p):
                    | vardec'''
     logging.debug("----- declaration ------")
     p[0]= p[1]
-    print p[0]
     evaluateAST(p[0])
 
 def p_vardec(p):
@@ -298,7 +299,7 @@ def p_vardec(p):
     p[0] = p[1]
 
 def p_node(p):
-    '''node-dec : NODE ID HAS keylist'''
+    '''node-dec : ID HAS keylist'''
     #Note - keylist implies parameters
 
     logging.debug("----- Node declaration -----")
@@ -307,9 +308,9 @@ def p_node(p):
     node.type = 'node-dec'
 
     child1 = ast.ASTNode()
-    child1.value = p[2]
+    child1.value = p[1]
     child2 = ast.ASTNode()
-    child2.value = p[4]
+    child2.value = p[3]
 
     node.children.append(child1)
     node.children.append(child2)
@@ -529,7 +530,7 @@ def p_statement(p):
 
 def p_edgeexpression(p):
     '''edgeaddition : ID '+' idOrAlphanum CONNECTOR idOrAlphanum'''
-    logging.debug("edgeadd")
+    logging.debug("-------In edgeaddition-------")
     node = ast.ASTNode()
     node.type = "addedge"
     node.children.append(p[1])
@@ -538,7 +539,29 @@ def p_edgeexpression(p):
     node.children.append(p[5])
     #print ids[p[2]].get_list()
     p[0] = node
-    logging.debug("-------In edgeaddition-------")
+
+def p_node_removal_expression(p):
+    '''noderemoval : ID '-' nodeLookup'''
+    logging.debug("-------In noderemoval-------")
+    node = ast.ASTNode()
+    node.type = "removenode"
+    node.children.append(p[1])
+    node.children.append(p[3])
+    p[0] = node
+
+def p_node_lookup(p):
+    '''nodeLookup : idOrAlphanum COLON idOrAlphanum
+                  | COLON idOrAlphanum'''
+    logging.debug("nodeLookup")
+    node = ast.ASTNode()
+    node.type = "lookupnode"
+    if len(p) == 3:
+        node.children.append("id")
+        node.children.append(p[2])
+    else:
+        node.children.append(p[1])
+        node.children.append(p[3])
+    p[0] = node
 
 def p_iterationstatement(p):
     '''iterationstatement : WHILE LPAREN expression RPAREN statement
@@ -589,7 +612,8 @@ def p_expressionstatement(p):
 def p_expression(p):
     '''completeexpression : call
                   | assignmentexpression
-                  | edgeaddition'''
+                  | edgeaddition
+                  | noderemoval'''
     logging.debug("expr")
     p[0] = p[1]
     logging.debug(p[0].type)
@@ -602,7 +626,8 @@ def p_expression(p):
 
 def p_assignval(p):
     '''assignmentexpression : ID '=' expression
-                            | ID '=' call '''
+                            | ID '=' call 
+                            | ID '=' nodeLookup'''
     #ids[p[1]] = p[3]
     node = ast.ASTNode()
     node.type="assignment"
@@ -777,7 +802,7 @@ def p_expression_string(p):
     logging.debug("p_expressionString")
     termNode = ast.ASTNode()
     termNode.type = "terminal"
-    termNode.value = p[1][1:-1]
+    termNode.value = str(p[1][1:-1])
     p[0] = termNode
     logging.debug(p[0].type)
 
@@ -786,7 +811,7 @@ def p_expression_number(p):
     logging.debug("p_expressionNumber")
     termNode = ast.ASTNode()
     termNode.type = "terminal"
-    termNode.value = p[1]
+    termNode.value = int(p[1])
     p[0] = termNode
     logging.debug(p[0].type)
 
@@ -821,14 +846,17 @@ def p_call(p):
     node.type = "funccall"
 
     try:
-        if(len(p) == 7):
-            node.children.append(func_map[[p[1]][p[3]]])
-            child = ast.ASTNode()
-            child.type = 'arglist'
-            child.value = p[5]
-            node.children.append(child)
-        elif(len(p) == 6):
-            node.children.append(func_map[p[1]][p[3]])
+        if(len(p) >= 6):
+            node.type = "member_funccall"
+
+            node.children.append(p[1])
+            node.children.append(p[3])
+            if len(p) ==7:
+                child = ast.ASTNode()
+                child.type = 'arglist'
+                child.value = p[5]
+                node.children.append(child)
+
         else:
             try:
                 logging.debug("****inbuilt****")
@@ -956,6 +984,7 @@ def inToOutNodes(nodeL):
 
 def inToOutLinks(sources):
     links = []
+    print sources, targets
     for source, targets in sources.iteritems():
         for target,properties in targets.iteritems():
             link = {'source': int(source), 'target' :int(target), 'right':True }
@@ -1103,29 +1132,93 @@ def evaluateAST(a):
         logging.debug(a.children[0])
         logging.debug(a.children[1])
         ids[a.children[0]]= evaluateAST(a.children[1]).value
-        logging.info('Assigned '+str(ids[a.children[0]])+' to '+str(a.children[0]))
+        logging.info('Assigned '+str(ids[a.children[0]])+' to '+str(a.children[0])+' of type '+str(type(ids[a.children[0]])))
         return
 
     if(a.type == "addedge"):
-           logging.debug("------argEdge-----")
-           curr =  ids[a.children[0]].get_data()
-           if a.children[1].value in curr.keys():
-               curr[a.children[1].value][a.children[3].value]={"__connector__":a.children[2]}
-           else:
-               curr[a.children[1].value] = {a.children[3].value : {"__connector__":a.children[2]}}
-           ids[a.children[0]].edgelist=curr
-           print ids[a.children[0]].edgelist
-           return
+        logging.debug("------argEdge-----")
+        curr =  ids[a.children[0]].get_data()
+        shadow = ids[a.children[0]].get_shadow()
+        if a.children[1].value in curr.keys():
+            curr[a.children[1].value][a.children[3].value]={"__connector__":a.children[2]}
+        else:
+            curr[a.children[1].value] = {a.children[3].value : {"__connector__":a.children[2]}}
+        try:
+            shadow[a.children[3].value][a.children[1].value] = None
+        except KeyError, e:
+            shadow[a.children[3].value] = { a.children[1].value : None }
+        
+        ids[a.children[0]].edgeList=curr
+        return
+
+    if(a.type == "removenode"):
+        logging.debug("------noderemoval-----")
+        links =  ids[a.children[0]].get_data()
+        shadow = ids[a.children[0]].get_shadow()
+
+        nodes =  evaluateAST(a.children[1]).value
+        for node in nodes:
+            node_id_to_be_removed = node.id
+            pop_from_shadow = []
+            if node_id_to_be_removed in links:
+                pop_from_shadow = links[node_id_to_be_removed].keys()
+            links.pop(node_id_to_be_removed, None)
+            if node_id_to_be_removed in shadow:
+                pop_from_links = [] 
+                for destination in shadow[node_id_to_be_removed].keys():
+                    links[destination].pop(node_id_to_be_removed, None)
+                    if len(links[destination]) == 0:
+                        pop_from_links.append(destination)
+    
+                for p in pop_from_links:
+                    links.pop(p, None)
+                pop_cleanup = []
+                for p in pop_from_shadow:
+                    shadow[p].pop(node_id_to_be_removed, None)
+                    if len(shadow[p]) == 0:
+                        pop_cleanup.append(p)
+                for p in pop_cleanup:
+                    shadow.pop(p, None)
+                shadow.pop(node_id_to_be_removed, None)
+        ids[a.children[0]].edgeList=links
+        ids[a.children[0]].shadowEdgeList=shadow
+        return
+
+    if(a.type == "lookupnode"):
+        try:
+            result = ast.ASTNode()
+            result.type = "terminal"
+            nodeSet = []
+            result.value = nodeSet
+            logging.debug("------lookupnode-----")
+            key =  a.children[0]
+            value = evaluateAST(a.children[1]).value
+            if key in ["id","ID"]:
+                nodeSet.append(lib.nodeList[value])
+                return result
+            key = key.value
+            for id,node in lib.nodeList.iteritems():
+                if node.get_data()[key] == value:
+                    nodeSet.append(node)
+            return result
+        except KeyError, e:
+            logging.critical("Node not found")
+            gexit()
+
+    if(a.type == "member_funccall"):
+        logging.debug('-----eval: member func_call----')
+        node = ast.ASTNode()
+        node.type = "terminal"
+        try:
+            node.value = getattr(ids[a.children[0]],a.children[1])(*evaluateAST(a.children[2].value).value)
+            return node
+        except KeyError, e:
+            logging.error("Unknown variable"+str(a.children[0]))
+            gexit()
 
     if(a.type == "funccall"):
         logging.debug('-----eval: call----')
 
-        # print "@@@@@@@@@@@@@@@@",a.children[0]
-        # statementlist
-        # function-pars
-        # return-args
-
-        #inbuilt functions - tested with print()
         node=ast.ASTNode()
         node.type="terminal"
         args = []

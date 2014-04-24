@@ -40,21 +40,17 @@ class Node(object):
 	
 	id = -1
 
-	def inc_id(self, child):
-		global globalLastNodeIDVal
-		child.id = globalLastNodeIDVal + 1
-		globalLastNodeIDVal = globalLastNodeIDVal + 1
-
 	def get_data(self,child):
 		return child.__dict__
 
 def node_init(self, *args):
-
+	global globalLastNodeIDVal
 	for k,v in self.mapping.iteritems():
 		if k > len(args)-1:
 			break
 		setattr(self,v,args[k])
-	Node().inc_id(self)
+	self.id = globalLastNodeIDVal + 1
+	globalLastNodeIDVal = globalLastNodeIDVal + 1
 
 class Graph:
 	''' Internal representation of a graph object '''
@@ -62,20 +58,46 @@ class Graph:
 	
 	edgeList = {}
 	
+	# Shadow edge list maintains a mapping of destinations to all sources it is in contact with
+	# eg. 	edgeList: 0 <-> 1, 3 -> 1, 4 -> 1
+	# 		shadowEdgeList: 1 : {0:None,3:None,4:None}
+	shadowEdgeList = {}
+
+	
 	def __init__(self, edgeList = None, gtype = 'd', gkey = "id"):
 		global globalLastGraphIDVal
 		
-		self.id = globalLastGraphIDVal + 1
+		self.id = globalLastGraphIDVal
 		globalLastGraphIDVal = globalLastGraphIDVal + 1
-		
+
 		if edgeList is not None:
 			self.edgeList = dict.copy(edgeList)
+			for source, destinations in edgeList.iteritems():
+				for destination, properties in destinations.iteritems():
+					try:
+						self.shadowEdgeList[destination][source] = None
+					except KeyError, e:
+						self.shadowEdgeList[destination] = { source : None }
+
 
 	def get_id(self):
 		return self.id
 
 	def get_data(self):
 		return self.edgeList
+
+	def get_shadow(self):
+		return self.shadowEdgeList
+
+	def get_adjacent(self, node):
+		adjacent = []
+		if node in self.shadowEdgeList:
+			for adjacent_id in self.shadowEdgeList[node]:
+				adjacent.append(nodeList[adjacent_id])
+		if node in self.edgeList:
+			for adjacent_id in self.edgeList[node]:
+				adjacent.append(nodeList[adjacent_id])
+		return adjacent
 
 	# Print to console
 	def print_data(self):
