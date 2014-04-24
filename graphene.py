@@ -119,6 +119,7 @@ def t_ID(t):
 def t_newline(t):
     r'\n+'
     t.lexer.lineno += len(t.value)
+    t.lexpos += len(t.value)
     t.type = "NEWLINE"
     if t.lexer.paren_count == 0:
         return t
@@ -1307,6 +1308,7 @@ def evaluateAST(a):
                     node.value = getattr(ids[a.children[0]],a.children[1])()
                 else:
                     node.value = getattr(ids[a.children[0]],a.children[1])(*evaluateAST(a.children[2].value).value)
+
             return node
         except KeyError, e:
             logging.error("Unknown variable"+str(a.children[0]))
