@@ -31,6 +31,16 @@ class modified_dict(dict):
 				raise KeyError
 		return val
 
+class modified_dict(dict):
+	def __getitem__(self, key):
+		try:
+			val = dict.__getitem__(self, key)
+			logging.info("Retrieved from local scope")
+		except KeyError, e:
+			val = dict.__getitem__(self["__global__"], key)
+			logging.info("Retrieved from global scope")
+		return val
+
 class Node(object):
 	'''Internal representation of the node type'''
 	def print_data(child):
