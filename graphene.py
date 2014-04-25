@@ -129,7 +129,7 @@ def t_WHITESPACE(t):
     t.lexpos += len(t.value)
 
 def t_NUMBER(t):
-    r"""(\d+(\.\d*)?|\.\d+)([eE][-+]? \d+)?"""
+    r"""(\-?\d+(\.\d*)?|\.\d+)([eE][-+]? \d+)?"""
     #t.value = decimal.Decimal(t.value)
     return t
 
@@ -635,7 +635,9 @@ def p_assignval(p):
                             | ID '=' SQRBEGIN values SQREND
                             | ID '=' SQRBEGIN SQREND
                             | ID '=' ID SQRBEGIN SQREND
-                            | ID '=' ID SQRBEGIN idOrAlphanum SQREND'''
+                            | ID '=' ID SQRBEGIN idOrAlphanum SQREND
+                            | ID SQRBEGIN idOrAlphanum SQREND '=' idOrAlphanum
+                            | ID SQRBEGIN idOrAlphanum SQREND '=' SQRBEGIN values SQREND'''
 
 
     #ids[p[1]] = p[3]
@@ -655,7 +657,7 @@ def p_assignval(p):
         node.children.append(p[1])
         node.children.append(n)
 
-    elif len(p) == 7:
+    elif len(p) == 7 and p[2] == "=":
         node.type = "indexassignment"
         node.children.append(p[1])
         termNode = ast.ASTNode()
@@ -663,6 +665,18 @@ def p_assignval(p):
         termNode.value = p[3]
         node.children.append(termNode)
         node.children.append(p[5])
+
+    elif len(p) == 7:
+        node.type = "rindexassignment"
+        node.children.append(p[1])
+        node.children.append(p[3])
+        node.children.append(p[6])
+
+    elif len(p) == 9:
+        node.type = "rindexassignment"
+        node.children.append(p[1])
+        node.children.append(p[3])
+        node.children.append(p[7])
 
     else:
         node.type="assignment"
@@ -1382,6 +1396,24 @@ def evaluateAST(a):
         else:
             ids[a.children[0]] = value
         return
+
+    if(a.type == 'rindexassignment'):
+        logging.debug("--- rindex assignment ---")
+
+        listValues = evaluateAST(ids[a.children[0]])
+        if evaluateAST(a.children[1]).value == len(listValues):
+            listValues.append(evaluateAST(a.children[2]).value)
+        else:
+            listValues[evaluateAST(a.children[1]).value] = evaluateAST(a.children[2]).value
+        
+        nlistValues = lib.modified_list(listValues)
+        node = ast.ASTNode()
+        node.type = "list"
+        node.value = nlistValues
+        ids[a.children[0]] = node
+
+        return
+
 
     if(a.type == "addedge"):
            logging.debug("------argEdge-----")
