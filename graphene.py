@@ -9,11 +9,13 @@
 #    ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝
 # Error handling - exit table
 
-import readline
+
 import ply.yacc as yacc
 import ply.lex as lex
 import os, sys
-
+if os.name == "posix":
+    import readline
+import inspect
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 from vendors import gui
 
@@ -24,9 +26,12 @@ import types
 import decimal
 import json
 from lib import grapheneLib as lib
+from lib import grapheneHelper as helper
+from lib import ast
 from collections import namedtuple
 import ast
 import logging
+
 # import symboltable
 
 logger = logging.getLogger()
@@ -36,12 +41,11 @@ if len(sys.argv) > 1:
     elif sys.argv[1] in ['--info', '-i']:
         logger.setLevel(logging.INFO)
 
-ids=lib.modified_dict()
 function=dict()
 
 NumberTypes = (types.IntType, types.LongType, types.FloatType, types.ComplexType)
 
-tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR')
+tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'FOREACH', 'IN', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR')
 literals = [';', '=', '+', '-', '*', '/']
 t_GR = r'\>'
 t_LS = r'\<'
@@ -53,6 +57,8 @@ RESERVED = {
   "return": "RETURN",
   "while": "WHILE",
   "for": "FOR",
+  "foreach": "FOREACH",
+  "in":"IN",
   "has": "HAS",
   "on": "ON",
   "NodeType": "NODE",
@@ -196,11 +202,11 @@ def goutput(graph=None):
     graphs = []
 
     if graph == None:
-        nodes = inToOutNodes(lib.nodeList)
+        nodes = helper.inToOutNodes(lib.nodeList)
         for k,g in lib.graphList.iteritems():
-            graphs.extend(inToOutLinks(g.get_data()))
+            graphs.extend(helper.inToOutLinks(g.get_data()))
     else:
-        graphs.extend(inToOutLinks(graph.get_data()))
+        graphs.extend(helper.inToOutLinks(graph.get_data()))
         g = graph.get_data()
         graph_nodelist = {}
         for source, destinations in g.iteritems():
@@ -208,7 +214,7 @@ def goutput(graph=None):
             for destination, properties in destinations.iteritems():
                 graph_nodelist[destination] = lib.nodeList[destination]
 
-        nodes = inToOutNodes(graph_nodelist)
+        nodes = helper.inToOutNodes(graph_nodelist)
 
     # Nodes and Links converted from IR to json
     logging.debug("nodes:"+str(nodes))
@@ -236,20 +242,17 @@ def ginput():
 
     input = json.loads(input)
 
-    lib.graphList[len(lib.graphList)+1] = lib.Graph(outToInLinks(input['links']))
+    lib.graphList[len(lib.graphList)+1] = lib.Graph(helper.outToInLinks(input['links']))
 
     # Unfortunately, we have to decide whether to create a template node class or one for EVERY node in input. This one does the former.
     template_node_class = type("template", (lib.Node,), dict(((k,None) for k,v in input["nodes"][0].iteritems()),__init__=lib.node_init, print_data=lambda self:lib.Node.print_data(self), get_data= lambda self: lib.Node().get_data(self), mapping=dict((i,el) for i,el in enumerate(input["nodes"][0]))))
-
+    
     for k in input['nodes']:
        lib.nodeList[k["id"]] = (template_node_class(k));
 
     print "One graph and",len(input["nodes"]),"nodes touched."
     logging.debug(lib.nodeList)
     logging.debug(lib.graphList)
-    logging.debug(outToInNodes(input['nodes']))
-    logging.debug(outToInLinks(input['links']))
-
 
 #
 #  ████████╗ ██████╗     ██████╗  ██████╗
@@ -417,9 +420,11 @@ def p_compoundstatementdef(p):
     '''compoundstatement : CURLBEGIN statementlist CURLEND
                          | CURLBEGIN CURLEND '''
     if len(p)==4:
-       p[0] = p[2]
+       p[0] = ast.ASTNode()
+       p[0].type = 'compoundstatement'
+       p[0].children.append(p[2])
     else:
-        p[0]=[]
+        p[0]=None
 
 ######### function def #########################
 
@@ -514,7 +519,8 @@ def p_statementlist(p):
     node.type = "statementlist";
     node.children.append(p[1]);
     if len(p)==3:
-        node.children.append(p[2]);
+        logging.debug('Statement list... appending children of statementlist to current statementlist')
+        node.children.extend(p[2].children);
     p[0]=node
 
     logging.debug(p[0].type)
@@ -539,7 +545,7 @@ def p_edgeexpression(p):
     node.children.append(p[3])
     node.children.append(p[4])
     node.children.append(p[5])
-    #print ids[p[2]].get_list()
+    #print helper.ids[p[2]].get_list()
     p[0] = node
 
 def p_node_removal_expression(p):
@@ -568,27 +574,43 @@ def p_node_lookup(p):
 
 def p_iterationstatement(p):
     '''iterationstatement : WHILE LPAREN expression RPAREN statement
-                          | FOR LPAREN statement expression ';' statement RPAREN CURLBEGIN statement CURLEND'''
+                          | FOR LPAREN statement expression ';' statement RPAREN CURLBEGIN statement CURLEND
+                          | FOREACH LPAREN ID IN ID RPAREN CURLBEGIN statementlist CURLEND'''
 
     if ( p[1] == 'while' ):
         Node = ast.ASTNode()
         Node.type = 'while'
-        Node.children.append(p[3])
-        Node.children.append(p[5])
+        Node.children.append(p[3]) #Condition
+        Node.children.append(p[5]) #Statement
         p[0]=Node
         logging.debug("-------In iterationstatement (while loop)-------")
 
     if( p[1] == 'for' ):
         Node = ast.ASTNode()
         Node.type = 'for'
-        Node.children.append(p[3])
-        Node.children.append(p[4])
-        Node.children.append(p[6])
-        Node.children.append(p[9])
+        Node.children.append(p[3]) #Initialization
+        Node.children.append(p[4]) #Condition
+        Node.children.append(p[6]) #Update
+        Node.children.append(p[9]) #Statement
         p[0] = Node
 
         logging.debug("-------In iterationstatement (for loop)-------")
-
+    
+    if( p[1] == 'foreach' ):
+        Node = ast.ASTNode()
+        Node.type = 'foreach'
+        Node.children.append(p[3]) #Iter variable
+        Node.children.append(p[5]) #Iter list
+        Node.children.append(p[8]) #Statement
+        logging.debug("THIS: ")
+        logging.debug(p[3])
+        logging.debug(p[5])
+        logging.debug(p[8].type)
+        
+        p[0] = Node
+        logging.debug("-------In iterationstatement (foreach loop)-------")
+        
+    
 def p_selStatement(p):
     '''selectionstatement : IF LPAREN expression RPAREN compoundstatement
                             | IF LPAREN expression RPAREN compoundstatement ELSE compoundstatement'''
@@ -640,7 +662,7 @@ def p_assignval(p):
                             | ID SQRBEGIN idOrAlphanum SQREND '=' SQRBEGIN values SQREND'''
 
 
-    #ids[p[1]] = p[3]
+    #helper.ids[p[1]] = p[3]
     logging.debug("-------In assignExpr-------")
 
     node = ast.ASTNode()
@@ -922,21 +944,21 @@ def p_expression_name(p):
 
 def p_callchain(p):
     '''callchain : call 
-                 | callchain DOT call'''
-    print("callchain function:"+str(p[1].children))
+                 | call DOT callchain'''
+        
     node = ast.ASTNode()
     node.type = "callchain"
     node.children.append(p[1])
-    if len(p) > 2:
-        node.children.append(p[3])
-        print "p[1]:",p[1].children[0].children,"p[3]:",p[3]
+    node.chain_next = None
+    if len(p)>2:
+        node.chain_next = p[3]
     p[0] = node
 
 def p_call(p):
     '''call : ID LPAREN arglist RPAREN
             | ID DOT ID LPAREN arglist RPAREN
             | ID DOT ID LPAREN RPAREN
-            | ID LPAREN RPAREN '''
+            | ID LPAREN RPAREN'''
 
     logging.debug("call")
     for x in p:
@@ -945,48 +967,28 @@ def p_call(p):
     logging.debug("p_call")
     node = ast.ASTNode()
     node.type = "funccall"
-
-    try:
-        if(len(p) >= 6):
-            node.type = "member_funccall"
-
-            node.children.append(p[1])      #object
-            node.children.append(p[3])      #member function
-            if len(p) ==7:
-                child = ast.ASTNode()
-                child.type = 'arglist'
-                child.value = p[5]
-                node.children.append(child)
+    if(len(p) >= 6):
+        node.type = "member_funccall"
+        logging.debug("****member_funccall****")
+        node.children.append(p[1])      #object
+        node.children.append(p[3])      #member function
+        if len(p) ==7:
+            child = ast.ASTNode()
+            child.type = 'arglist'
+            child.value = p[5]
+            node.children.append(child)
+    else:
+        node.children.append(p[1])
+        if len(p) == 5:
+            logging.debug("****func_arg****")
+            child = ast.ASTNode()
+            child.type = 'arglist'
+            child.value = p[3]
+            node.children.append(child)  #actual arguments passed to function
         else:
-            try:
-                logging.debug("****inbuilt****")
-                node.children.append(func_map[p[1]])
+            node.children.append(None)  #No arguments passed
 
-            except KeyError:
-                logging.debug("****userdefined****")
-                node.children.append(function[p[1]].children[0])    #statements
-                node.children.append(function[p[1]].children[1])    #arguments
-                node.children.append(function[p[1]].children[2])    #returnargs
-                if len(p) == 5:
-                    child = ast.ASTNode()
-                    child.type = 'arglist'
-                    child.value = p[3]
-                    node.children.append(child)  #actual arguments passed to function
-                else:
-                    node.children.append(None)  #No arguments passed
-
-
-            if(len(p) == 5):
-                logging.debug("****func_arg****")
-                child = ast.ASTNode()
-                child.type = 'arglist'
-                child.value = p[3]
-                node.children.append(child)
-        p[0] = node
-
-    except:
-        logging.error("Function not found. Please replace developer")
-        logging.error("Offending function: "+p[1])
+    p[0] = node
 
 def p_arg(p):
     '''arglist : idOrAlphanum COMMA arglist
@@ -1047,58 +1049,7 @@ def p_isId(p):
     logging.debug(p[0].type)
 
 parser = yacc.yacc()
-
-#output format to internal representation
-def outToInNodes(nodes):
-    final =dict()
-    for node in nodes:
-        final[node['id']] = node['name']
-    return final
-
-
-def outToInLinks(links):
-    final = dict()
-    for link in links:
-        properties = {}
-        for k,v in link.iteritems():
-            if k not in ["source","target","left","right"]:
-                properties[k] = v
-        if link["left"] == True:
-            properties["__connector__"] = "<->"
-        else:
-            properties["__connector__"] = "->"
-        try:
-            final[link['source']][link['target']] = (properties)
-        except KeyError:
-            final[link['source']] = {link['target'] : properties}
-    return final
-
-
-#internal representation to output
-
-def inToOutNodes(nodeL):
-    finalStr =[]
-    for id,node in nodeL.iteritems():
-        finalStr.append(node.get_data())
-    return finalStr
-
-def inToOutLinks(sources):
-    links = []
-    for source, targets in sources.iteritems():
-        for target,properties in targets.iteritems():
-            link = {'source': int(source), 'target' :int(target), 'right':True }
-            if properties["__connector__"] == "<->":
-                link["left"] = True
-            else:
-                link["left"] = False
-
-            for k,v in properties.iteritems():
-                link[k] = v
-            if "weight" not in link.keys():
-                link["weight"] = ''
-            links.append(link)
-    return links
-
+    
 def evaluateAST(a):
 
     global ids
@@ -1126,7 +1077,9 @@ def evaluateAST(a):
 
     if(a.type =="statementlist"):
         a.value = []
+        logging.debug('Evaluating a list of statements')
         for e in a.children:
+            logging.debug('Evaluating a statement in it...')
             evaluateAST(e)
         return a
 
@@ -1242,14 +1195,14 @@ def evaluateAST(a):
     if(a.type == "assignment"):
         logging.debug(a.children[0])
         logging.debug(a.children[1])
-        ids[a.children[0]]= evaluateAST(a.children[1]).value
-        logging.info('Assigned '+str(ids[a.children[0]])+' to '+str(a.children[0])+' of type '+str(type(ids[a.children[0]])))
+        helper.ids[a.children[0]]= evaluateAST(a.children[1]).value
+        logging.info('Assigned '+str(helper.ids[a.children[0]])+' to '+str(a.children[0])+' of type '+str(type(helper.ids[a.children[0]])))
         return
 
     if(a.type == "addedge"):
         logging.debug("------argEdge-----")
-        curr =  ids[a.children[0]].get_data()
-        shadow = ids[a.children[0]].get_shadow()
+        curr =  helper.ids[a.children[0]].get_data()
+        shadow = helper.ids[a.children[0]].get_shadow()
         if a.children[1].value in curr.keys():
             curr[a.children[1].value][a.children[3].value]={"__connector__":a.children[2]}
         else:
@@ -1259,13 +1212,13 @@ def evaluateAST(a):
         except KeyError, e:
             shadow[a.children[3].value] = { a.children[1].value : None }
         
-        ids[a.children[0]].edgeList=curr
+        helper.ids[a.children[0]].edgeList=curr
         return
 
     if(a.type == "removenode"):
         logging.debug("------noderemoval-----")
-        links =  ids[a.children[0]].get_data()
-        shadow = ids[a.children[0]].get_shadow()
+        links =  helper.ids[a.children[0]].get_data()
+        shadow = helper.ids[a.children[0]].get_shadow()
 
         nodes =  evaluateAST(a.children[1]).value
         for node in nodes:
@@ -1291,8 +1244,8 @@ def evaluateAST(a):
                 for p in pop_cleanup:
                     shadow.pop(p, None)
                 shadow.pop(node_id_to_be_removed, None)
-        ids[a.children[0]].edgeList=links
-        ids[a.children[0]].shadowEdgeList=shadow
+        helper.ids[a.children[0]].edgeList=links
+        helper.ids[a.children[0]].shadowEdgeList=shadow
         return
 
     if(a.type == "lookupnode"):
@@ -1321,27 +1274,31 @@ def evaluateAST(a):
 
     if(a.type == "member_funccall"):
         logging.debug('-----eval: member func_call----')
+        
         node = ast.ASTNode()
         node.type = "terminal"
         try:
-            if isinstance(ids[a.children[0]],ast.ASTNode):
-                # print evaluateAST(ids[a.children[0]])
+            if isinstance(helper.ids[a.children[0]],ast.ASTNode):
                 if len(a.children) <= 2:
-                    node.value = getattr(lib.modified_list(evaluateAST(ids[a.children[0]])),a.children[1])()
+                    node.value = getattr(lib.modified_list(evaluateAST(helper.ids[a.children[0]])),a.children[1])()
                 else: 
-                    node.value = getattr(ids[a.children[0]].value,a.children[1])(evaluateAST(a.children[2].value).value)
+                    node.value = getattr(helper.ids[a.children[0]].value,a.children[1])(evaluateAST(a.children[2].value).value)
             else:
                 if len(a.children) <= 2:
-                    node.value = getattr(ids[a.children[0]],a.children[1])()
+                    try:
+                        node.value = getattr(helper.ids[a.children[0]],a.children[1].children[0])()
+                    except Exception, e:
+                        node.value = getattr(helper.ids[a.children[0]],a.children[1])()
+                    # node.value = getattr(helper.ids[a.children[0]],a.children[1])()
                 else:
-                    node.value = getattr(ids[a.children[0]],a.children[1])(*evaluateAST(a.children[2].value).value)
+                    node.value = getattr(helper.ids[a.children[0]],a.children[1])(*evaluateAST(a.children[2].value).value)
 
             return node
         except KeyError, e:
             logging.error("Unknown variable"+str(a.children[0]))
             gexit()
 
-        logging.info('Assigned '+str(ids[a.children[0]])+' to '+str(a.children[0]))
+        logging.info('Assigned '+str(helper.ids[a.children[0]])+' to '+str(a.children[0]))
         return
 
     if(a.type == "listassignment"):
@@ -1375,8 +1332,10 @@ def evaluateAST(a):
         nlistValues = lib.modified_list(listValues)
         node = ast.ASTNode()
         node.type = "list"
+
         node.value = nlistValues
-        ids[a.children[0]] = node
+        helper.ids[a.children[0]] = node
+
         return
 
 
@@ -1386,21 +1345,21 @@ def evaluateAST(a):
 
     if(a.type == 'indexassignment'):
         logging.debug("--- index assignment ---")
-        value = evaluateAST(ids[evaluateAST(a.children[1]).value])[evaluateAST(a.children[2]).value]
+        value = evaluateAST(helper.ids[evaluateAST(a.children[1]).value])[evaluateAST(a.children[2]).value]
         if isinstance(value,list):
             node = ast.ASTNode()
             node.type = "list"
             nlistValues = lib.modified_list(value)
             node.value = nlistValues
-            ids[a.children[0]] = node
+            helper.ids[a.children[0]] = node
         else:
-            ids[a.children[0]] = value
+            helper.ids[a.children[0]] = value
         return
 
     if(a.type == 'rindexassignment'):
         logging.debug("--- rindex assignment ---")
 
-        listValues = evaluateAST(ids[a.children[0]])
+        listValues = evaluateAST(helper.ids[a.children[0]])
         if evaluateAST(a.children[1]).value == len(listValues):
             listValues.append(evaluateAST(a.children[2]).value)
         else:
@@ -1410,41 +1369,41 @@ def evaluateAST(a):
         node = ast.ASTNode()
         node.type = "list"
         node.value = nlistValues
-        ids[a.children[0]] = node
+        helper.ids[a.children[0]] = node
 
         return
 
 
     if(a.type == "addedge"):
            logging.debug("------argEdge-----")
-           curr =  ids[a.children[0]].get_data()
+           curr =  helper.ids[a.children[0]].get_data()
            if a.children[1].value in curr.keys():
                curr[a.children[1].value][a.children[3].value]={"__connector__":a.children[2]}
            else:
                curr[a.children[1].value] = {a.children[3].value : {"__connector__":a.children[2]}}
-           ids[a.children[0]].edgelist=curr
+
+           helper.ids[a.children[0]].edgelist=curr
            return
 
     if(a.type == "callchain"):
         logging.debug('-----eval: callchain----')
         ret = evaluateAST(a.children[0])
-        print "return: ",ret.value
-        if len(a.children) > 1:
-            print a.children
+        if a.chain_next != None:
             node = ast.ASTNode()
             node.type = "member_funccall"
-            node.children.append(ret.value)                #object
-            print a.children[1].value
-            node.children.append(a.children[1].children[0])      #member function
-            if len(a.children[1]) >1:
+            helper.ids["__chaining_buffer__"] = ret.value
+            node.children.append("__chaining_buffer__")                #object
+            node.children.append(a.chain_next.children[0])      #member function
+            if len(a.chain_next.children) >1:
                 child = ast.ASTNode()
                 child.type = 'arglist'
-                child.value = a.children[1][1]
+                child.value = a.chain_next.children[1]
                 node.children.append(child)
-            print node
-            return evaluateAST(node)
+            try:
+                return evaluateAST(node)
+            except Exception, e:
+                raise                        
         return ret
-
 
     if(a.type == "funccall"):
         logging.debug('-----eval: call----')
@@ -1452,50 +1411,81 @@ def evaluateAST(a):
         node=ast.ASTNode()
         node.type="terminal"
         args = []
-        if isinstance(a.children[0],ast.ASTNode):
-            if "__global__" in ids.keys():
-                caller_local = lib.modified_dict(ids)
-                caller_local.pop("__global__", None)
-                ids = lib.modified_dict({"__global__": ids["__global__"], "__caller_local__" : caller_local})
-            else:
-                ids = lib.modified_dict({"__global__": ids})
-            numArgs = len(a.children[1].children)
+        # built in
+        func = ast.ASTNode()
+        func.type = "funccall"
+        try:
+            try:
+                logging.debug("****inbuilt****")
+                func.children.append(func_map[a.children[0]])
+                if(len(a.children)> 1):
+                    logging.debug("****func_arg****")
+                    func.children.append(a.children[1])
+                else:
+                    func.children.append(None)
+
+            except KeyError:
+                # User-defined
+                logging.debug("****userdefined****")
+                func.children.append(function[a.children[0]].children[0])    #statements
+                func.children.append(function[a.children[0]].children[1])    #arguments
+                func.children.append(function[a.children[0]].children[2])    #returnargs
+                if len(a.children) >1:
+                    logging.debug("****func_arg****")
+                    func.children.append(a.children[1])  #actual arguments passed to function
+                else:
+                    func.children.append(None)  #No arguments passed
+        except KeyError, e:
+            logging.error("Function not found.")
+            logging.error("Offending function: "+a.children[0])
+            gexit()
+
+        if isinstance(func.children[0],ast.ASTNode):
+            #Packing
+            #scope_in() #Commented because it should now be handled by scoping in and out by compoundstatement evaluation
+            #End packing
             
-            if a.children[1].children[0] == None:
+            numArgs = len(func.children[1].children)
+            
+            if func.children[1].children[0] == None:
                 numArgs = 0
             
             for i in range(0,numArgs):
-                ids[a.children[1].children[i]]= evaluateAST(a.children[3].value).value[i]
-                logging.info('Assigned '+str(a.children[1].children[i])+' to '+str(ids[a.children[1].children[i]])+' inside funccall')
-            logging.debug("MODIFIED scope: Before call:",ids)
-            evaluateAST(a.children[0])
+                helper.ids[func.children[1].children[i]]= evaluateAST(func.children[3].value).value[i]
+                logging.info('Assigned '+str(func.children[1].children[i])+' to '+str(helper.ids[func.children[1].children[i]])+' inside funccall')
+            logging.debug("MODIFIED scope: Before call:",helper.ids)
+            evaluateAST(func.children[0])
             node.value = []
 
-            if a.children[2].children[0] != None:       
-                for ret in a.children[2].children:
+            if func.children[2].children[0] != None:       
+                for ret in func.children[2].children:
                     node.value.append(evaluateAST(ret))
             
-            if "__caller_local__" in ids.keys():
-                __global = ids["__global__"]
-                ids = ids["__caller_local__"]
-                ids["__global__"] = __global
-            else:
-                ids = ids["__global__"]
-            logging.debug("MODIFIED scope: After call:",ids)
+            #Unpacking
+            #scope_out() #Refer above at scope_in() call
+            #End unpacking
+            logging.debug("MODIFIED scope: After call:",helper.ids)
         else:    
-            if len(a.children) > 1:
-                node.value=a.children[0](*evaluateAST(a.children[1].value).value)
+            if func.children[1] != None:
+                x = evaluateAST(func.children[1].value).value
+                node.value=func.children[0](*x)
             else:
-                node.value=a.children[0]()
+                node.value=func.children[0]()
             try:
-                if a.children[0].__bases__[0].__name__ in ["Node"]:
+                if func.children[0].__bases__[0].__name__ in ["Node"]:
                     lib.nodeList[lib.globalLastNodeIDVal] = node.value
             except Exception, e:
                 pass
 
         return node
 
-
+        
+    if (a.type == 'compoundstatement'):
+        logging.debug('Evaluating compound statement...')
+        helper.scope_in()
+        evaluateAST(a.children[0])
+        helper.scope_out()
+        
         # #User-defined functions
         # if len(a.children):
         #     # Number of formal arguments - len(a.children[1].children)
@@ -1521,8 +1511,8 @@ def evaluateAST(a):
 
         #     numArgs = len(a.children[1].children)
         #     for i in range(0,numArgs):
-        #         funcIds[a.children[1].children[i]]= evaluateAST(a.children[3].value).value[i]
-        #         logging.info('Assigned '+str(a.children[1].children[i])+' to '+str(funcIds[a.children[1].children[i]])+' inside funccall')
+        #         funchelper.ids[a.children[1].children[i]]= evaluateAST(a.children[3].value).value[i]
+        #         logging.info('Assigned '+str(a.children[1].children[i])+' to '+str(funchelper.ids[a.children[1].children[i]])+' inside funccall')
 
 
         #     node = ast.ASTNode()
@@ -1554,7 +1544,7 @@ def evaluateAST(a):
         #     node.type="terminal"
         #     node.value=evaluateAST(a.children[0])
         #     return node
-
+    
     if(a.type == "sequence"):
         return evaluateAST(a.children[0])
 
@@ -1562,10 +1552,10 @@ def evaluateAST(a):
         node=ast.ASTNode()
         node.type="terminal"
         try:
-            if a.children[0] in ids:
-                node.value = ids[a.children[0]]
+            if a.children[0] in helper.ids:
+                node.value = helper.ids[a.children[0]]
             else:
-                node.value=ids[a.children[0]]
+                node.value=helper.ids[a.children[0]]
         except KeyError, e:
             logging.critical("Unknown variable: '"+str(a.children[0])+"'")
             sys.exit(-1)
@@ -1594,7 +1584,7 @@ def evaluateAST(a):
                     logging.error("Destination Node #"+str(destination)+"not found.")
                     sys.exit(0)
 
-        ids[a.children[0].value] = new_graph
+        helper.ids[a.children[0].value] = new_graph
 
         # new_graph.print_data()
         return
@@ -1632,9 +1622,26 @@ def evaluateAST(a):
 
         while (evaluateAST(a.children[1]).value != 0): # Check condition
             evaluateAST(a.children[3]) # Evaluate statement
-            evaluateAST(a.children[4]) # Evaluate statement
             evaluateAST(a.children[2]) # Update loop statement
-
+            
+    if(a.type == 'foreach'):
+        logging.debug("evaluateAST of foreach")
+        logging.debug("*********************")
+        logging.debug(evaluateAST(a.children[0]))
+        logging.debug("*********************")
+        iterVar = 0
+        
+        helper.scope_in()
+        
+        while iterVar < len(evaluateAST(helper.ids[a.children[1]])):
+            logging.debug(helper.ids[a.children[1]])
+            helper.ids[a.children[0]] = evaluateAST(helper.ids[a.children[1]])[iterVar] #Update iterVariable
+            logging.debug('Evaluating foreach statement')
+            evaluateAST(a.children[2]) #evaluate child compoundstatement
+            iterVar += 1 #increment index of iterVar
+        
+        helper.scope_out()
+        
 
 while True:
     try:

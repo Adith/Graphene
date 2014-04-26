@@ -10,6 +10,7 @@
 import copy
 from collections import namedtuple
 import logging
+import inspect
 
 graphList = {}
 nodeList = {}
@@ -39,13 +40,15 @@ class modified_list(list):
 			self.len = len(arg)
 
 	def append(self,item):
-		for i in item:
-			super(modified_list, self).append(i)
+		if isinstance(item,list):
+			for i in item:
+				super(modified_list, self).append(i)
+		else:
+			super(modified_list, self).append(item)
 		self.len = self.len + 1
 
 	def length(self):
 		return self.len
-
 
 class Node(object):
 	'''Internal representation of the node type'''
@@ -57,14 +60,24 @@ class Node(object):
 	id = -1
 
 	def get_data(self,child):
-		return child.__dict__
+		result = {}
+		for a in inspect.getmembers(child, lambda a:not(inspect.isroutine(a))):
+			if not(a[0].startswith('__') and a[0].endswith('__')):
+				result[a[0]] = a[1]
+		return result
 
-def node_init(self, *args):
+def node_init(self, *node_data):
 	global globalLastNodeIDVal
+	call_from_ui = False
+	if isinstance(node_data[0],dict):
+		call_from_ui = True
 	for k,v in self.mapping.iteritems():
-		if k > len(args)-1:
+		if k > len(node_data)-1:
 			break
-		setattr(self,v,args[k])
+		if call_from_ui:
+			setattr(self,v,node_data[0][v])
+		else:
+			setattr(self,v,node_data[k])
 	self.id = globalLastNodeIDVal + 1
 	globalLastNodeIDVal = globalLastNodeIDVal + 1
 
@@ -106,14 +119,14 @@ class Graph:
 		return self.shadowEdgeList
 
 	def getNodes(self):
-		nodeIds = []
+		nodeIds = modified_list()
 		for n in self.edgeList:
 			if n not in nodeIds:
 				nodeIds.append(n)
 		for n in self.shadowEdgeList:
 			if n not in nodeIds:
 				nodeIds.append(n)
-		nodes = []
+		nodes = modified_list()
 		for n in nodeIds:
 			nodes.append(nodeList[n])
 		return nodes

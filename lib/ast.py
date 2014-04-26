@@ -7,11 +7,11 @@ class Terminal(object):
 class ASTNode(object):
     def __init__(self):
         self.children = []
+        self.chain_next = None
         self.properties = dict()
         self.isLeaf = False
 
     
-
 def printTree(a):
     print len(a.children), "children"
     for x in a.children:
