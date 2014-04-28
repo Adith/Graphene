@@ -31,7 +31,6 @@ from lib import grapheneLib as lib
 from lib import grapheneHelper as helper
 from lib import ast
 from collections import namedtuple
-import ast
 import logging
 
 # import symboltable
@@ -1689,7 +1688,9 @@ def evaluateAST(a):
 
 while True:
     try:
-        s = raw_input('graphene> ')
+        s=raw_input('graphene> ')
+        while s[-1] != ';':
+            s = s+raw_input('\t  ')
     except EOFError:
         break
     if not s: continue
