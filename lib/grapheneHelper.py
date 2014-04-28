@@ -71,4 +71,19 @@ def inToOutLinks(sources):
                 link["weight"] = ''
             links.append(link)
     return links
+
+def completeCodeStmt(str):
+    qcount = 0
+    pcount = 0
+    for c in str:
+        if c == '"':
+            qcount += 1
+        elif qcount%2 == 0:
+            if c == '{':
+                pcount += 1
+            elif c == '}':
+                pcount -= 1
+    if qcount%2 == 0 and pcount==0:
+        return True
+    return False 
     

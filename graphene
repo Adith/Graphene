@@ -12,7 +12,7 @@ else
   while getopts ":f:t:idh" opt; do
     case $opt in
       f)
-        python graphene.py < $OPTARG
+        python graphene.py -f $OPTARG
         break
         ;;
       i)
@@ -22,7 +22,7 @@ else
         ;;
       d)
         # "Scotty! I need.. more.. isolated tests!"
-        python graphene.py --debug
+        python graphene.py -d
         break
         ;;
       t)

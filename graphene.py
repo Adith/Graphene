@@ -31,17 +31,19 @@ from lib import grapheneLib as lib
 from lib import grapheneHelper as helper
 from lib import ast
 from collections import namedtuple
-import ast
 import logging
 
 # import symboltable
 
+fread = False
 logger = logging.getLogger()
 if len(sys.argv) > 1:
-    if sys.argv[1] in ['--debug', '-d']:
+    if "-d" in sys.argv:
         logger.setLevel(logging.DEBUG)
-    elif sys.argv[1] in ['--info', '-i']:
+    elif "-i" in sys.argv:
         logger.setLevel(logging.INFO)
+    if "-f" in sys.argv:
+        fread = True
 
 function=dict()
 
@@ -104,7 +106,7 @@ t_LPAREN = r'\('
 
 t_RPAREN = r'\)'
 
-t_STRING = r'[\"|\'][a-zA-Z\ /.0-9]*[\"|\']'
+t_STRING = r'[\"|\'][a-zA-Z\ /.0-9(){}]*[\"|\']'
 
 t_COMMA = r','
 
@@ -473,7 +475,7 @@ def p_compoundstatementdef(p):
 ######### function def #########################
 
 def p_funcdec(p):
-    '''funcdec : func'''
+    '''funcdec : func ';' '''
     p[0] = p[1]
 
 def p_func(p):
@@ -1686,14 +1688,28 @@ def evaluateAST(a):
         
         helper.scope_out()
         
+if fread:
+    with open(sys.argv[2]) as f:
+        s = ' '
+        for line in f:
+            s = s+line.rstrip()
+            if len(s) == 0:
+                s = ' '
 
-while True:
-    try:
-        s = raw_input('graphene> ')
-    except EOFError:
-        break
-    if not s: continue
-    if (not s.lower() == "exit"):
-        result = parser.parse(s)
-    else:
-        sys.exit()
+            if s[-1] == ';' and helper.completeCodeStmt(s) == True:
+                parser.parse(s)
+                s = ' '
+else:
+    while True:
+        try:
+            s=raw_input('graphene> ').rstrip()
+            if len(s) == 0:
+                s = ' '
+
+            while s[-1] != ';' or helper.completeCodeStmt(s) == False:
+                s = s+raw_input('>');
+
+        except EOFError:
+            break
+        if not s: continue
+        parser.parse(s)
