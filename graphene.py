@@ -23,7 +23,9 @@ from itertools import chain
 import itertools
 import sys
 import types
+import string
 import decimal
+import random
 import json
 from lib import grapheneLib as lib
 from lib import grapheneHelper as helper
@@ -102,7 +104,7 @@ t_LPAREN = r'\('
 
 t_RPAREN = r'\)'
 
-t_STRING = r'[\"|\'][a-zA-Z\ 0-9]*[\"|\']'
+t_STRING = r'[\"|\'][a-zA-Z\ /.0-9]*[\"|\']'
 
 t_COMMA = r','
 
@@ -192,6 +194,8 @@ def gprint(*node):
 #    ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝
 # Graph to be displayed visually. Global nodelist has to be
 # size limited to only the nodes in the specified graph
+def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+    return ''.join(random.choice(chars) for _ in range(size))
 
 def goutput(graph=None):
     # Prints state to D3
@@ -220,10 +224,9 @@ def goutput(graph=None):
     logging.debug("nodes:"+str(nodes))
     logging.debug("links:"+str(graphs))
 
-
     # Dump json to file
     with open('./proc/state.json', 'w') as outfile:
-        json.dump({"nodes":nodes, "lastNodeId": len(nodes)-1, "links": graphs}, outfile)
+         json.dump({"nodes":nodes, "lastNodeId": len(nodes)-1, "links": graphs}, outfile)
 
     gui.output()
 
@@ -237,22 +240,63 @@ def goutput(graph=None):
 #
 # Add default values for nodes in gui
 
-def ginput():
-    input = gui.input()
-
-    input = json.loads(input)
-
-    lib.graphList[len(lib.graphList)+1] = lib.Graph(helper.outToInLinks(input['links']))
-
-    # Unfortunately, we have to decide whether to create a template node class or one for EVERY node in input. This one does the former.
-    template_node_class = type("template", (lib.Node,), dict(((k,None) for k,v in input["nodes"][0].iteritems()),__init__=lib.node_init, print_data=lambda self:lib.Node.print_data(self), get_data= lambda self: lib.Node().get_data(self), mapping=dict((i,el) for i,el in enumerate(input["nodes"][0]))))
+def ginput(*args):
+    if len(args)==2:
+        #########################################
+        try:
+            f = open(args[1],'r')
+        except Exception, e:
+            logging.error("File Not Found.")
+            gexit()
+            
+        lines = f.readlines()
+        f.close()
+        finalEdgeList = dict()
+        nodes = {}
+        number_of_nodes = len(lib.nodeList)
     
-    for k in input['nodes']:
-       lib.nodeList[k["id"]] = (template_node_class(k));
+        # new_node_class = type('facebook', (lib.Node,), dict(((el,None) for i,el in enumerate(['weight'])),__init__=lib.node_init, print_data=lambda self:lib.Node.print_data(self), get_data= lambda self: lib.Node().get_data(self), mapping=dict((i,el) for i,el in enumerate(['name','artist','match','playcount']))))
+        # func_map['facebook'] = new_node_class
+    
+        for i,line in enumerate(lines):
+            properties = {}
+            edgeF, edgeT = [int(x) for x in line.split()]
+            #print edgeF,edgeT
+            properties["__connector__"] = "->"
+            if edgeF not in lib.nodeList.keys():
+                lib.nodeList[edgeF] = func_map[args[0]](id_generator(), id_generator())
+                lib.nodeList[edgeF].id = edgeF
+            if edgeT not in lib.nodeList.keys():
+                lib.nodeList[edgeT] = func_map[args[0]](id_generator(), id_generator())
+                lib.nodeList[edgeT].id = edgeT
+            try:
+                finalEdgeList[edgeF][edgeT] = properties
+            except KeyError:
+                finalEdgeList[edgeF] = {edgeT : properties}
+        
+        lib.graphList[len(lib.graphList)+1] = lib.Graph(finalEdgeList)
+        print "One graph and",len(lib.nodeList)-number_of_nodes,"nodes touched."
 
-    print "One graph and",len(input["nodes"]),"nodes touched."
-    logging.debug(lib.nodeList)
-    logging.debug(lib.graphList)
+        
+        #########################################
+    elif len(args)==0:
+        input = json.loads(gui.input())
+        lib.graphList[len(lib.graphList)+1] = lib.Graph(helper.outToInLinks(input['links']))
+
+        # Unfortunately, we have to decide whether to create a template node class or one for EVERY node in input. This one does the former.
+        template_node_class = type("template", (lib.Node,), dict(((k,None) for k,v in input["nodes"][0].iteritems()),__init__=lib.node_init, print_data=lambda self:lib.Node.print_data(self), get_data= lambda self: lib.Node().get_data(self), mapping=dict((i,el) for i,el in enumerate(input["nodes"][0]))))
+    
+        for k in input['nodes']:
+           lib.nodeList[k["id"]] = (template_node_class(k));
+
+        print "One graph and",len(input["nodes"]),"nodes touched."
+        logging.debug(lib.nodeList)
+        logging.debug(lib.graphList)
+        logging.debug(helper.outToInNodes(input['nodes']))
+        logging.debug(helper.outToInLinks(input['links']))
+    else:
+        logging.error("Input takes 0 arguments for input from user, or 3 for input from file <node_type, file>.")
+        gexit()
 
 #
 #  ████████╗ ██████╗     ██████╗  ██████╗
@@ -1381,7 +1425,6 @@ def evaluateAST(a):
                curr[a.children[1].value][a.children[3].value]={"__connector__":a.children[2]}
            else:
                curr[a.children[1].value] = {a.children[3].value : {"__connector__":a.children[2]}}
-
            helper.ids[a.children[0]].edgelist=curr
            return
 
@@ -1573,6 +1616,7 @@ def evaluateAST(a):
 
         new_graph = lib.Graph(evaluateAST(a.children[3]), evaluateAST(a.children[1]), evaluateAST(a.children[2]))
         lib.graphList[lib.globalLastGraphIDVal] = new_graph
+
         for source, destinations in new_graph.get_data().iteritems():
             source = int(source)
             if source not in lib.nodeList.keys():

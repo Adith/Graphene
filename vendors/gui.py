@@ -52,12 +52,7 @@ def renderHelper(direction):
     while port==0:
         pass
 
-    if(direction == 'output'):
-        query = '?static'
-    else:
-        query = ''
-
-    url = 'http://localhost:'+str(port)+'/www/d3.html'+query
+    url = 'http://localhost:'+str(port)+'/www/'+direction+'.html'
     if os.name == 'posix':
         # Works best on Chrome.
         try:
@@ -91,7 +86,7 @@ def output():
     thread = renderHelper("output")
 
     # HACK-O-RAMA! Find a better way to figure out how to stop server after page load!
-    time.sleep(3)
+    time.sleep(10)
 
     continue_server = False
     

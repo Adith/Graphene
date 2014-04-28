@@ -1,8 +1,9 @@
 <html>
 <head>
+<link href='http://fonts.googleapis.com/css?family=Lato:900' rel='stylesheet' type='text/css'>
 </head>
 <body>
-<img src="images/logo.png" width="150" style="position: absolute; right: 25px; top:25px;">
+<div class="logo">Graphene</div>
 <div>
     <button id="copy-button"></button>
     <table id="state-table">
@@ -13,7 +14,7 @@
     </table>
 </div>
 <script src="javascript/jquery.min.js"></script>
-<script src="javascript/d3.v3.min.js"></script>
+<script type="text/javascript" src="javascript/d3.v3.min.js"></script>
 <script src="javascript/app.js"></script>
 <script src="javascript/ZeroClipboard.min.js"></script>
 
@@ -71,7 +72,6 @@ client.on( "load", function( readyEvent ) {
 
 		result['nodes'] = nodesCopy;
 		result['links'] = linksCopy;
-		console.log(JSON.stringify(result));
   		$('#copy-button').attr('data-clipboard-text', JSON.stringify(result));
 		});
 

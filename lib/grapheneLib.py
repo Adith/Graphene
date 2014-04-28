@@ -86,6 +86,8 @@ class Graph:
 	id = -1
 	
 	edgeList = {}
+
+	clusters = []
 	
 	# Shadow edge list maintains a mapping of destinations to all sources it is in contact with
 	# eg. 	edgeList: 0 <-> 1, 3 -> 1, 4 -> 1
@@ -151,3 +153,33 @@ class Graph:
 					if k2 in ["__connector__"]:
 						continue
 					print "\t\t",k2,':',v2
+	# DFS
+	def listAdjacent(self,node):
+		a = [adj for adj in self.edgelist[node].keys()]
+		return a
+
+	def cluster_data(self):
+		clusters = []
+		edges_copy = copy.deepcopy(self.edgeList)
+		while len(edges_copy.keys()):
+			randombegin = edges_copy.keys()[0]
+			queue = [randombegin]
+			cluster_instance = [randombegin]
+			while len(queue):
+				for item in queue:
+					if item in edges_copy.keys():
+						queue.extend(edges_copy[item].keys())
+						cluster_instance.extend(edges_copy[item].keys())
+						edges_copy.pop(item)
+					queue.remove(item)
+			clusters.append(cluster_instance)
+
+		return clusters
+
+    # # Cluster Nodes
+    # def cluster_data(self):
+    # 	clusters = [] 
+    # 	while self.edgeList:
+    # 		graph = self.__init__()
+
+      

@@ -20,7 +20,6 @@ $.ajax({
   dataType: 'json',
   async: false,
   success: function(data) {
-    console.log(data);
       mapping = {};
       index = 0;
         $.each(data.nodes,function(i,node){
@@ -34,10 +33,6 @@ $.ajax({
             }); 
           }
 });
-
-console.log(mapping);
-console.log(nodes);
-console.log(links);
 
 // init D3 force layout
 var force = d3.layout.force()
