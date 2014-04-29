@@ -1,11 +1,22 @@
+# -*- coding: UTF-8 -*-
+
+#  ██████╗ ██╗   ██╗██╗
+# ██╔════╝ ██║   ██║██║
+# ██║  ███╗██║   ██║██║
+# ██║   ██║██║   ██║██║
+# ╚██████╔╝╚██████╔╝██║
+#  ╚═════╝  ╚═════╝ ╚═╝
+                     
+
 from threading import Thread
 import SimpleHTTPServer
 import SocketServer
 import webbrowser
-import pyperclip
+from vendors import pyperclip
 import time
 import select
 import os
+import sys
 port = 0
 
 continue_server = True
@@ -17,6 +28,9 @@ def keep_running():
 def run_while_true():
     global continue_server, port
 
+    f = open(os.devnull, 'w')
+    sys.stderr = f
+    
     Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
     httpd = SocketServer.TCPServer(("", port), Handler)
     httpd.allow_reuse_address = True
@@ -28,15 +42,17 @@ def run_while_true():
             httpd.handle_request()
     httpd.socket.close()
 
-def main():
-    global continue_server, port
-    oldValue = pyperclip.paste()
+    sys.stderr = sys.__stderr__
+    f.close()
+
+def renderHelper(direction):
     thread = Thread(target = run_while_true, args = ())
     thread.start()
     
     while port==0:
         pass
-    url = 'http://localhost:'+str(port)+'/template/d3.html'
+
+    url = 'http://localhost:'+str(port)+'/www/'+direction+'.html'
     if os.name == 'posix':
         # Works best on Chrome.
         try:
@@ -46,6 +62,12 @@ def main():
     elif os.name == 'nt':
         # Has to be tested.
         webbrowser.get('windows-default').open(url)
+    return thread
+
+def input():
+    global continue_server, port
+    oldValue = pyperclip.paste()
+    thread = renderHelper("input")
 
     while pyperclip.paste() == oldValue:
         time.sleep(0.5)
@@ -57,3 +79,17 @@ def main():
     port = 0
     continue_server = True
     return retValue
+
+def output():
+    global continue_server, port
+    oldValue = pyperclip.paste()
+    thread = renderHelper("output")
+
+    # HACK-O-RAMA! Find a better way to figure out how to stop server after page load!
+    time.sleep(5)
+
+    continue_server = False
+    
+    thread.join()
+    port = 0
+    continue_server = True

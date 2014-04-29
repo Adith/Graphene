@@ -4,4 +4,3 @@ parsetab.py
 *.exe
 *.bak
 proc/state.json
-samples/*.*

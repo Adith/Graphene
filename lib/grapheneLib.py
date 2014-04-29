@@ -25,11 +25,17 @@ class modified_dict(dict):
 			logging.debug("Lookup for "+key+" in "+str(self))
 			logging.info("Retrieved from local scope")
 		except KeyError, e:
+			if "__caller_local__" in self.keys():
+				val = self["__caller_local__"][key]
+				if val != None:
+					logging.info("Retrieved from parent scope")
+					return val
 			if "__global__" in self.keys():
 				val = self["__global__"][key]
-				logging.info("Retrieved from global scope")
-			else:
-				raise KeyError
+				if val != None:
+					logging.info("Retrieved from global scope")
+					return val
+			return None
 		return val
 
 class modified_list(list):
@@ -50,10 +56,15 @@ class modified_list(list):
 	def length(self):
 		return self.len
 
+	def first(self):
+		return super(modified_list, self).__getitem__(0)
+
+	def last(self):
+		return super(modified_list, self).__getitem__(-1)
+
 class Node(object):
 	'''Internal representation of the node type'''
 	def print_data(child):
-		print "\t","ID:", child.id
 		for k,v in child.mapping.iteritems():
 			print "\t", v, ":", getattr(child, v)
 	
@@ -71,8 +82,8 @@ def node_init(self, *node_data):
 	call_from_ui = False
 	if isinstance(node_data[0],dict):
 		call_from_ui = True
-	for k,v in self.mapping.iteritems():
-		if k > len(node_data)-1:
+	for k,v in self.mapping.iteritems(): 
+		if k > len(node_data):
 			break
 		if call_from_ui:
 			setattr(self,v,node_data[0][v])
@@ -134,14 +145,21 @@ class Graph:
 		return nodes
 
 	def getAdjacent(self, node):
-		adjacent = []
-		if node in self.shadowEdgeList:
-			for adjacent_id in self.shadowEdgeList[node]:
+		adjacent = modified_list()
+		if node.id in self.shadowEdgeList:
+			for adjacent_id in self.shadowEdgeList[node.id]:
 				adjacent.append(nodeList[adjacent_id])
-		if node in self.edgeList:
-			for adjacent_id in self.edgeList[node]:
+		if node.id in self.edgeList:
+			for adjacent_id in self.edgeList[node.id]:
 				adjacent.append(nodeList[adjacent_id])
 		return adjacent
+
+	def listAdjacent(self, node):
+		nodes = self.getAdjacent(node)
+		ret = modified_list()
+		for node in nodes:
+			ret.append(node.id)
+		return ret
 
 	# Print to console
 	def print_data(self):
@@ -154,9 +172,9 @@ class Graph:
 						continue
 					print "\t\t",k2,':',v2
 	# DFS
-	def listAdjacent(self,node):
-		a = [adj for adj in self.edgelist[node].keys()]
-		return a
+	# def listAdjacent(self,node):
+	# 	a = [adj for adj in self.edgelist[node].keys()]
+	# 	return a
 
 	def cluster_data(self):
 		clusters = []

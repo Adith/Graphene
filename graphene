@@ -1,6 +1,6 @@
 #!/bin/bash
 usage() {
-  echo "Usage: graphene [test [-t <number>]|[-i]] | [-f <file_path>] "
+  echo "Usage: graphene [test [-t <number>]|[-i]] | [-f <file_path>] | -h "
 }
 if (($# == 0)); then
   python graphene.py
@@ -12,7 +12,7 @@ else
   while getopts ":f:t:idh" opt; do
     case $opt in
       f)
-        python graphene.py < $OPTARG
+        python graphene.py -f $OPTARG
         break
         ;;
       i)
@@ -21,8 +21,8 @@ else
         break
         ;;
       d)
-        # "Scotty! I need.. more.. isolated tests!"
-        python graphene.py --debug
+        # "I don't always know what's going on.. But when I do, I don't!"
+        python graphene.py -d
         break
         ;;
       t)

@@ -17,7 +17,6 @@ if os.name == "posix":
     import readline
 import inspect
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from vendors import gui
 
 from itertools import chain
 import itertools
@@ -27,6 +26,7 @@ import string
 import decimal
 import random
 import json
+from lib import grapheneUI as gui
 from lib import grapheneLib as lib
 from lib import grapheneHelper as helper
 from lib import ast
@@ -35,18 +35,22 @@ import logging
 
 # import symboltable
 
+fread = False
 logger = logging.getLogger()
+
 if len(sys.argv) > 1:
-    if sys.argv[1] in ['--debug', '-d']:
+    if "-d" in sys.argv:
         logger.setLevel(logging.DEBUG)
-    elif sys.argv[1] in ['--info', '-i']:
+    elif "-i" in sys.argv:
         logger.setLevel(logging.INFO)
+    if "-f" in sys.argv:
+        fread = True
 
 function=dict()
 
 NumberTypes = (types.IntType, types.LongType, types.FloatType, types.ComplexType)
 
-tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'FOREACH', 'IN', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR')
+tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'FOREACH', 'IN', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR', 'ADD_STORE', 'REMOVE_STORE')
 literals = [';', '=', '+', '-', '*', '/']
 t_GR = r'\>'
 t_LS = r'\<'
@@ -95,6 +99,10 @@ t_NEQUAL = r'\!='
 
 t_LOGAND = r'\&&'
 
+t_ADD_STORE = r'\+='
+
+t_REMOVE_STORE = r'-='
+
 #TODO - this symbol is giving lexer error -NEHA
 # add parsing for logical OR.
 #t_LOGOR = r'\||'
@@ -103,7 +111,7 @@ t_LPAREN = r'\('
 
 t_RPAREN = r'\)'
 
-t_STRING = r'[\"|\'][a-zA-Z\ /.0-9]*[\"|\']'
+t_STRING = r'[\"|\'][a-zA-Z\ /.:0-9(){}]*[\"|\']'
 
 t_COMMA = r','
 
@@ -169,6 +177,8 @@ def strlen(node):
 def gprint(*node):
     logging.debug('******print******')
     for e in node:
+        if(isinstance(e,ast.ASTNode)):
+            e = evaluateAST(e)
         if type(e).__bases__[0].__name__ in ["Node"]:
             print "Node has"
             e.print_data();
@@ -183,7 +193,12 @@ def gprint(*node):
                 else:
                     gprint(v)
         else:
-            print evaluateAST(e)
+            try:
+                print evaluateAST(e)
+            except Exception, e:
+                logging.error("Unknown expression")
+                gexit()
+            
 
 # ████████╗ ██████╗     ██████╗  ██████╗
 # ╚══██╔══╝██╔═══██╗    ██╔══██╗██╔═══██╗
@@ -203,7 +218,6 @@ def goutput(graph=None):
     # Dump state to json
     nodes = []
     graphs = []
-
     if graph == None:
         nodes = helper.inToOutNodes(lib.nodeList)
         for k,g in lib.graphList.iteritems():
@@ -254,13 +268,10 @@ def ginput(*args):
         nodes = {}
         number_of_nodes = len(lib.nodeList)
     
-        # new_node_class = type('facebook', (lib.Node,), dict(((el,None) for i,el in enumerate(['weight'])),__init__=lib.node_init, print_data=lambda self:lib.Node.print_data(self), get_data= lambda self: lib.Node().get_data(self), mapping=dict((i,el) for i,el in enumerate(['name','artist','match','playcount']))))
-        # func_map['facebook'] = new_node_class
-    
         for i,line in enumerate(lines):
             properties = {}
             edgeF, edgeT = [int(x) for x in line.split()]
-            #print edgeF,edgeT
+            
             properties["__connector__"] = "->"
             if edgeF not in lib.nodeList.keys():
                 lib.nodeList[edgeF] = func_map[args[0]](id_generator(), id_generator())
@@ -286,16 +297,16 @@ def ginput(*args):
         template_node_class = type("template", (lib.Node,), dict(((k,None) for k,v in input["nodes"][0].iteritems()),__init__=lib.node_init, print_data=lambda self:lib.Node.print_data(self), get_data= lambda self: lib.Node().get_data(self), mapping=dict((i,el) for i,el in enumerate(input["nodes"][0]))))
     
         for k in input['nodes']:
-           lib.nodeList[k["id"]] = (template_node_class(k));
+            lib.nodeList[k["id"]] = template_node_class(k);
 
         print "One graph and",len(input["nodes"]),"nodes touched."
         logging.debug(lib.nodeList)
         logging.debug(lib.graphList)
-        logging.debug(helper.outToInNodes(input['nodes']))
         logging.debug(helper.outToInLinks(input['links']))
     else:
         logging.error("Input takes 0 arguments for input from user, or 3 for input from file <node_type, file>.")
         gexit()
+    return lib.graphList[len(lib.graphList)]
 
 #
 #  ████████╗ ██████╗     ██████╗  ██████╗
@@ -462,21 +473,31 @@ def p_compoundstatement(p):
 def p_compoundstatementdef(p):
     '''compoundstatement : CURLBEGIN statementlist CURLEND
                          | CURLBEGIN CURLEND '''
-    if len(p)==4:
-       p[0] = ast.ASTNode()
-       p[0].type = 'compoundstatement'
-       p[0].children.append(p[2])
+    p[0] = ast.ASTNode()
+    p[0].type = 'compoundstatement'
+    if len(p)==4:    
+        p[0].children.append(p[2])
     else:
-        p[0]=None
+        p[0].children.append(None)
+
+def p_funccompoundstatementdef(p):
+    '''funccompoundstatement : CURLBEGIN statementlist CURLEND
+                         | CURLBEGIN CURLEND '''
+    p[0] = ast.ASTNode()
+    p[0].type = 'funccompoundstatement'
+    if len(p)==4:    
+        p[0].children.append(p[2])
+    else:
+        p[0].children.append(None)
 
 ######### function def #########################
 
 def p_funcdec(p):
-    '''funcdec : func'''
+    '''funcdec : func ';' '''
     p[0] = p[1]
 
 def p_func(p):
-    '''func : DEF parameters IMPLY ID compoundstatement IMPLY returnarguments'''
+    '''func : DEF parameters IMPLY ID funccompoundstatement IMPLY returnarguments'''
     #funcdef : DEF parameters IMPLY ID CURLBEGIN statementlist CURLEND IMPLY returnlist
     #p[0] = ast.Function(None, p[2], tuple(p[3]), (), 0, None, p[5])
     Node = ast.ASTNode()
@@ -567,7 +588,6 @@ def p_statementlist(p):
     p[0]=node
 
     logging.debug(p[0].type)
-##    logging.debug(ast.printTree(p[0]))
 
 
 def p_statement(p):
@@ -580,7 +600,7 @@ def p_statement(p):
     p[0]=p[1]
 
 def p_edgeexpression(p):
-    '''edgeaddition : ID '+' idOrAlphanum CONNECTOR idOrAlphanum'''
+    '''edgeaddition : ID ADD_STORE idOrAlphanum CONNECTOR idOrAlphanum'''
     logging.debug("-------In edgeaddition-------")
     node = ast.ASTNode()
     node.type = "addedge"
@@ -588,11 +608,11 @@ def p_edgeexpression(p):
     node.children.append(p[3])
     node.children.append(p[4])
     node.children.append(p[5])
-    #print helper.ids[p[2]].get_list()
+
     p[0] = node
 
 def p_node_removal_expression(p):
-    '''noderemoval : ID '-' nodeLookup'''
+    '''noderemoval : ID REMOVE_STORE nodeLookup'''
     logging.debug("-------In noderemoval-------")
     node = ast.ASTNode()
     node.type = "removenode"
@@ -602,23 +622,27 @@ def p_node_removal_expression(p):
 
 def p_node_lookup(p):
     '''nodeLookup : idOrAlphanum COLON idOrAlphanum
-                  | COLON idOrAlphanum'''
+                  | COLON idOrAlphanum
+                  | idOrAlphanum'''
     logging.debug("nodeLookup")
     node = ast.ASTNode()
     node.type = "lookupnode"
     if len(p) == 3:
         node.children.append("id")
         node.children.append(p[2])
-    else:
+    elif len(p) == 4:
         node.children.append(p[1])
         node.children.append(p[3])
+    else:
+        node.children.append(p[1])
     p[0] = node
 
 
 def p_iterationstatement(p):
     '''iterationstatement : WHILE LPAREN expression RPAREN statement
                           | FOR LPAREN statement expression ';' statement RPAREN CURLBEGIN statement CURLEND
-                          | FOREACH LPAREN ID IN ID RPAREN CURLBEGIN statementlist CURLEND'''
+                          | FOREACH LPAREN ID IN ID RPAREN CURLBEGIN statementlist CURLEND
+                          | FOREACH LPAREN ID IN expression RPAREN CURLBEGIN statementlist CURLEND'''
 
     if ( p[1] == 'while' ):
         Node = ast.ASTNode()
@@ -695,7 +719,7 @@ def p_expression(p):
 
 def p_assignval(p):
     '''assignmentexpression : ID '=' expression
-                            | ID '=' callchain
+                            | arglist '=' expression
                             | ID '=' nodeLookup
                             | ID '=' SQRBEGIN values SQREND
                             | ID '=' SQRBEGIN SQREND
@@ -938,7 +962,6 @@ def p_expression_eqop(p):
         node.children.append(p[3])
         p[0] = node
 
-
 ##    print p[1], p[3]
 ##    if p[2] == '==' :
 ##        if isinstance(p[1], decimal.Decimal) and isinstance(p[3], decimal.Decimal):
@@ -982,6 +1005,10 @@ def p_expression_name(p):
     except LookupError:
         logging.error(str("Undefined name '%s'" % p[1]))
         p[0] = 0
+
+def p_exp_call(p):
+    '''expression : callchain'''
+    p[0] = p[1]
 
 #################################
 
@@ -1105,7 +1132,10 @@ def evaluateAST(a):
 
     if(isinstance(a,float)):
         return a
-
+    
+    if(type(a).__bases__[0].__name__ in ["Node"]):
+        return a
+    
     if(isinstance(a,list)):
         ret = []
         for e in a:
@@ -1236,9 +1266,15 @@ def evaluateAST(a):
         return node
 
     if(a.type == "assignment"):
+        logging.debug("------assignment----")
         logging.debug(a.children[0])
         logging.debug(a.children[1])
-        helper.ids[a.children[0]]= evaluateAST(a.children[1]).value
+    
+        if (isinstance(a.children[0], ast.ASTNode)):
+            for index,i in enumerate(a.children[0].children):
+                helper.ids[a.children[0].children[index].children[0]]= evaluateAST(evaluateAST(a.children[1]).value[index]).value                
+        else:
+            helper.ids[a.children[0]]= evaluateAST(a.children[1]).value
         logging.info('Assigned '+str(helper.ids[a.children[0]])+' to '+str(a.children[0])+' of type '+str(type(helper.ids[a.children[0]])))
         return
 
@@ -1256,7 +1292,7 @@ def evaluateAST(a):
             shadow[a.children[3].value] = { a.children[1].value : None }
         
         helper.ids[a.children[0]].edgeList=curr
-        return
+        return helper.ids[a.children[0]]
 
     if(a.type == "removenode"):
         logging.debug("------noderemoval-----")
@@ -1279,17 +1315,17 @@ def evaluateAST(a):
     
                 for p in pop_from_links:
                     links.pop(p, None)
-                pop_cleanup = []
-                for p in pop_from_shadow:
-                    shadow[p].pop(node_id_to_be_removed, None)
-                    if len(shadow[p]) == 0:
-                        pop_cleanup.append(p)
-                for p in pop_cleanup:
-                    shadow.pop(p, None)
                 shadow.pop(node_id_to_be_removed, None)
+            pop_cleanup = []
+            for p in pop_from_shadow:
+                shadow[p].pop(node_id_to_be_removed, None)
+                if len(shadow[p]) == 0:
+                    pop_cleanup.append(p)
+            for p in pop_cleanup:
+                shadow.pop(p, None)
         helper.ids[a.children[0]].edgeList=links
         helper.ids[a.children[0]].shadowEdgeList=shadow
-        return
+        return helper.ids[a.children[0]]
 
     if(a.type == "lookupnode"):
         try:
@@ -1298,17 +1334,20 @@ def evaluateAST(a):
             nodeSet = []
             result.value = nodeSet
             logging.debug("------lookupnode-----")
-            key =  a.children[0]
-            value = evaluateAST(a.children[1]).value
-            if key in ["id","ID"]:
-                nodeSet.append(lib.nodeList[value])
-                return result
-            key = key.value
-            for id,node in lib.nodeList.iteritems():
-                data = node.get_data()
-                if key in data: 
-                    if data[key] == value:
-                        nodeSet.append(node)
+            if len(a.children) == 1:
+                nodeSet.append(evaluateAST(a.children[0]).value)
+            else:
+                key =  a.children[0]
+                value = evaluateAST(a.children[1]).value
+                if key in ["id","ID"]:
+                    nodeSet.append(lib.nodeList[value])
+                    return result
+                key = key.value
+                for id,node in lib.nodeList.iteritems():
+                    data = node.get_data()
+                    if key in data: 
+                        if data[key] == value:
+                            nodeSet.append(node)
             result.value = nodeSet
             return result
         except KeyError, e:
@@ -1346,7 +1385,7 @@ def evaluateAST(a):
 
     if(a.type == "listassignment"):
         logging.debug("--- list assignment ---")
-        listValues = []
+        listValues = lib.modified_list()
 
         if len(a.children[1].children) == 0:
             temp = evaluateAST(a.children[1]).value
@@ -1358,7 +1397,7 @@ def evaluateAST(a):
                 if t.type == "id" and isinstance(evaluateAST(t).value,ast.ASTNode):
                     if isinstance(evaluateAST(t).value.value,list):
                         ttemp = evaluateAST(t).value.value
-                        innerList = []
+                        innerList = lib.modified_list()
                         for tt in ttemp:
                             innerList.append(tt.value)
                         n = ast.ASTNode()
@@ -1484,7 +1523,7 @@ def evaluateAST(a):
 
         if isinstance(func.children[0],ast.ASTNode):
             #Packing
-            #scope_in() #Commented because it should now be handled by scoping in and out by compoundstatement evaluation
+            # helper.scope_in() #Commented because it should now be handled by scoping in and out by compoundstatement evaluation
             #End packing
             
             numArgs = len(func.children[1].children)
@@ -1497,14 +1536,17 @@ def evaluateAST(a):
                 logging.info('Assigned '+str(func.children[1].children[i])+' to '+str(helper.ids[func.children[1].children[i]])+' inside funccall')
             logging.debug("MODIFIED scope: Before call:",helper.ids)
             evaluateAST(func.children[0])
+            
             node.value = []
 
             if func.children[2].children[0] != None:       
-                for ret in func.children[2].children:
-                    node.value.append(evaluateAST(ret))
-            
+                if len(func.children[2].children) ==1:
+                    node.value = evaluateAST(func.children[2].children[0]).value
+                else:
+                    for ret in func.children[2].children:
+                        node.value.append(evaluateAST(ret))
             #Unpacking
-            #scope_out() #Refer above at scope_in() call
+            # helper.scope_out() #Refer above at scope_in() call
             #End unpacking
             logging.debug("MODIFIED scope: After call:",helper.ids)
         else:    
@@ -1512,81 +1554,28 @@ def evaluateAST(a):
                 x = evaluateAST(func.children[1].value).value
                 node.value=func.children[0](*x)
             else:
-                node.value=func.children[0]()
+                node.value=func.children[0]()                
+
             try:
                 if func.children[0].__bases__[0].__name__ in ["Node"]:
                     lib.nodeList[lib.globalLastNodeIDVal] = node.value
             except Exception, e:
                 pass
-
         return node
 
         
     if (a.type == 'compoundstatement'):
-        logging.debug('Evaluating compound statement...')
-        helper.scope_in()
-        evaluateAST(a.children[0])
-        helper.scope_out()
-        
-        # #User-defined functions
-        # if len(a.children):
-        #     # Number of formal arguments - len(a.children[1].children)
-        #     # Fist argument - a.children[1].children[0]
-        #     # Number of actual arguments - len(evaluateAST(a.children[3].value).value)
-        #     # First argument - evaluateAST(a.children[3].value).value[0]
+        logging.debug('compound statement')
+        if a.children[0] != None:
+            # helper.scope_in()
+            evaluateAST(a.children[0])
+            # helper.scope_out()
 
-        #     # if a.children[1].children[0] == None:
-        #     #     print "No formal arguments"
+    if (a.type == 'funccompoundstatement'):
+        logging.debug('function compound statement')
+        if a.children[0] != None:
+            evaluateAST(a.children[0])
 
-        #     # if a.children[3] == None:
-        #     #     print "No actual arguments"
-
-        #     if (a.children[1].children[0] == None and a.children[3] != None) or (a.children[1].children[0] != None and a.children[3] == None):
-        #         print "Error! - Number of arguments in function call does not match"
-        #         sys.exit(0)
-
-        #     elif a.children[1].children[0] != None and a.children[3] != None and len(a.children[1].children) != len(evaluateAST(a.children[3].value).value):
-        #         print "Error! - Number of arguments in function call does not match"
-        #         sys.exit(0)
-
-        #     global funcIds
-
-        #     numArgs = len(a.children[1].children)
-        #     for i in range(0,numArgs):
-        #         funchelper.ids[a.children[1].children[i]]= evaluateAST(a.children[3].value).value[i]
-        #         logging.info('Assigned '+str(a.children[1].children[i])+' to '+str(funchelper.ids[a.children[1].children[i]])+' inside funccall')
-
-
-        #     node = ast.ASTNode()
-        #     node.type = 'terminal'
-        #     node.value = evaluateAST(a.children[0])
-
-        #     funcIds=dict()
-
-        #     return node
-
-        # if len(a.children)>1 and len(a.children)!=3:
-        #     print "outer if"
-        #     if(a.children[1].type == "arglist"):
-        #         print "inner if"
-        #         node=ast.ASTNode()
-        #         node.type="terminal"
-        #         args = []
-        #         node.value=a.children[0](*evaluateAST(a.children[1].value).value)
-        #         return node
-        #     else:
-        #         print "inner else"
-        #         node=ast.ASTNode()
-        #         node.type="terminal"
-        #         node.value=a.children[0](evaluateAST(a.children[1]))
-        #         return node
-        # else:
-        #     print "outer else"
-        #     node=ast.ASTNode()
-        #     node.type="terminal"
-        #     node.value=evaluateAST(a.children[0])
-        #     return node
-    
     if(a.type == "sequence"):
         return evaluateAST(a.children[0])
 
@@ -1674,27 +1663,60 @@ def evaluateAST(a):
         logging.debug("*********************")
         iterVar = 0
         
-        helper.scope_in()
-        
-        while iterVar < len(evaluateAST(helper.ids[a.children[1]])):
-            logging.debug(helper.ids[a.children[1]])
-            helper.ids[a.children[0]] = evaluateAST(helper.ids[a.children[1]])[iterVar] #Update iterVariable
+        # helper.scope_in()
+        # logging.debug("scope in")
+        if(a.children[1].type == 'id'):
+            iteratingList = evaluateAST(helper.ids[a.children[1]])
+        else:
+            iteratingList = evaluateAST(a.children[1])
+            if(isinstance(iteratingList, ast.ASTNode)):
+                iteratingList = iteratingList.value
+
+        while iterVar < len(iteratingList):
+            helper.ids[a.children[0]] = iteratingList[iterVar] #Update iterVariable
             logging.debug('Evaluating foreach statement')
             evaluateAST(a.children[2]) #evaluate child compoundstatement
             iterVar += 1 #increment index of iterVar
-        
-        helper.scope_out()
-        
 
-while True:
-    try:
-        s=raw_input('graphene> ')
-        while s[-1] != ';':
-            s = s+raw_input('\t  ')
-    except EOFError:
-        break
-    if not s: continue
-    if (not s.lower() == "exit"):
-        result = parser.parse(s)
-    else:
-        sys.exit()
+        # while iterVar < len(evaluateAST(helper.ids[a.children[1]])):
+        #     logging.debug(helper.ids[a.children[1]])
+        #     helper.ids[a.children[0]] = evaluateAST(helper.ids[a.children[1]])[iterVar] #Update iterVariable
+        #     logging.debug('Evaluating foreach statement')
+        #     evaluateAST(a.children[2]) #evaluate child compoundstatement
+        #     iterVar += 1 #increment index of iterVar
+        
+        logging.debug("scope out")
+        # helper.scope_out()
+        
+try:
+    f = open("proc/state.json", 'w')
+    f.write('{"lastNodeId": -1, "nodes": [], "links": []}')
+    f.close()
+except Exception, e:
+    logging.critical("Unable to initialize.")
+    gexit()
+
+if fread:
+    with open(sys.argv[2]) as f:
+        s = ' '
+        for line in f:
+            s = s+line.rstrip()
+            if len(s) == 0:
+                s = ' '
+
+            if s[-1] == ';' and helper.completeCodeStmt(s) == True:
+                parser.parse(s)
+                s = ' '
+else:
+    while True:
+        try:
+            s=raw_input('graphene> ').rstrip()
+            if len(s) == 0:
+                s = ' '
+            while s[-1] != ';' or helper.completeCodeStmt(s) == False:
+                s = s+raw_input('>');
+
+        except EOFError:
+            break
+        if not s: continue
+        parser.parse(s)

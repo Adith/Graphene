@@ -13,12 +13,14 @@ def scope_in():
     
 def scope_out():
     global ids
+    print ids
     if "__caller_local__" in ids.keys():
         __global = ids["__global__"]
         ids = ids["__caller_local__"]
         ids["__global__"] = __global
     else:
         ids = ids["__global__"]
+    print ids
     
 # output format to internal representation
 # Depracated in favor of copy constructor
@@ -71,4 +73,19 @@ def inToOutLinks(sources):
                 link["weight"] = ''
             links.append(link)
     return links
+
+def completeCodeStmt(str):
+    qcount = 0
+    pcount = 0
+    for c in str:
+        if c == '"':
+            qcount += 1
+        elif qcount%2 == 0:
+            if c == '{':
+                pcount += 1
+            elif c == '}':
+                pcount -= 1
+    if qcount%2 == 0 and pcount==0:
+        return True
+    return False 
     
