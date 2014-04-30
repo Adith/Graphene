@@ -22,11 +22,7 @@ from itertools import chain
 import itertools
 import sys
 import types
-import string
 import decimal
-import random
-import json
-from lib import grapheneUI as gui
 from lib import grapheneLib as lib
 from lib import grapheneHelper as helper
 from lib import ast
@@ -170,164 +166,6 @@ def p_error(p):
     print 'Found:', cvars['ltype']
     print 'Current stack:', cvars['symstack']
     sys.exit()
-
-def strlen(node):
-    print "Count:", len(G)
-
-def gprint(*node):
-    logging.debug('******print******')
-    for e in node:
-        if(isinstance(e,ast.ASTNode)):
-            e = evaluateAST(e)
-        if type(e).__bases__[0].__name__ in ["Node"]:
-            print "Node has"
-            e.print_data();
-        elif isinstance(e, lib.Graph):
-            print "Graph has {"
-            e.print_data();
-            print "}"
-        elif isinstance(e,list):
-            for v in e:
-                if isinstance(v, ast.ASTNode):
-                    gprint(evaluateAST(v).value)
-                else:
-                    gprint(v)
-        else:
-            try:
-                print evaluateAST(e)
-            except Exception, e:
-                logging.error("Unknown expression")
-                gexit()
-            
-
-# ████████╗ ██████╗     ██████╗  ██████╗
-# ╚══██╔══╝██╔═══██╗    ██╔══██╗██╔═══██╗
-#    ██║   ██║   ██║    ██║  ██║██║   ██║
-#    ██║   ██║   ██║    ██║  ██║██║   ██║
-#    ██║   ╚██████╔╝    ██████╔╝╚██████╔╝
-#    ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝
-# Graph to be displayed visually. Global nodelist has to be
-# size limited to only the nodes in the specified graph
-def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
-    return ''.join(random.choice(chars) for _ in range(size))
-
-def goutput(graph=None):
-    # Prints state to D3
-    # Note: state = ALL graphs
-
-    # Dump state to json
-    nodes = []
-    graphs = []
-    if graph == None:
-        nodes = helper.inToOutNodes(lib.nodeList)
-        for k,g in lib.graphList.iteritems():
-            graphs.extend(helper.inToOutLinks(g.get_data()))
-    else:
-        graphs.extend(helper.inToOutLinks(graph.get_data()))
-        g = graph.get_data()
-        graph_nodelist = {}
-        for source, destinations in g.iteritems():
-            graph_nodelist[source] = lib.nodeList[source]
-            for destination, properties in destinations.iteritems():
-                graph_nodelist[destination] = lib.nodeList[destination]
-
-        nodes = helper.inToOutNodes(graph_nodelist)
-
-    # Nodes and Links converted from IR to json
-    logging.debug("nodes:"+str(nodes))
-    logging.debug("links:"+str(graphs))
-
-    # Dump json to file
-    with open('./proc/state.json', 'w') as outfile:
-         json.dump({"nodes":nodes, "lastNodeId": len(nodes)-1, "links": graphs}, outfile)
-
-    gui.output()
-
-#
-#  ████████╗ ██████╗     ██████╗  ██████╗
-#  ╚══██╔══╝██╔═══██╗    ██╔══██╗██╔═══██╗
-#     ██║   ██║   ██║    ██║  ██║██║   ██║
-#     ██║   ██║   ██║    ██║  ██║██║   ██║
-#     ██║   ╚██████╔╝    ██████╔╝╚██████╔╝
-#     ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝
-#
-# Add default values for nodes in gui
-
-def ginput(*args):
-    if len(args)==2:
-        #########################################
-        try:
-            f = open(args[1],'r')
-        except Exception, e:
-            logging.error("File Not Found.")
-            gexit()
-            
-        lines = f.readlines()
-        f.close()
-        finalEdgeList = dict()
-        nodes = {}
-        number_of_nodes = len(lib.nodeList)
-    
-        for i,line in enumerate(lines):
-            properties = {}
-            edgeF, edgeT = [int(x) for x in line.split()]
-            
-            properties["__connector__"] = "->"
-            if edgeF not in lib.nodeList.keys():
-                lib.nodeList[edgeF] = func_map[args[0]](id_generator(), id_generator())
-                lib.nodeList[edgeF].id = edgeF
-            if edgeT not in lib.nodeList.keys():
-                lib.nodeList[edgeT] = func_map[args[0]](id_generator(), id_generator())
-                lib.nodeList[edgeT].id = edgeT
-            try:
-                finalEdgeList[edgeF][edgeT] = properties
-            except KeyError:
-                finalEdgeList[edgeF] = {edgeT : properties}
-        
-        lib.graphList[len(lib.graphList)+1] = lib.Graph(finalEdgeList)
-        print "One graph and",len(lib.nodeList)-number_of_nodes,"nodes touched."
-
-        
-        #########################################
-    elif len(args)==0:
-        input = json.loads(gui.input())
-        lib.graphList[len(lib.graphList)+1] = lib.Graph(helper.outToInLinks(input['links']))
-
-        # Unfortunately, we have to decide whether to create a template node class or one for EVERY node in input. This one does the former.
-        template_node_class = type("template", (lib.Node,), dict(((k,None) for k,v in input["nodes"][0].iteritems()),__init__=lib.node_init, print_data=lambda self:lib.Node.print_data(self), get_data= lambda self: lib.Node().get_data(self), mapping=dict((i,el) for i,el in enumerate(input["nodes"][0]))))
-    
-        for k in input['nodes']:
-            lib.nodeList[k["id"]] = template_node_class(k);
-
-        print "One graph and",len(input["nodes"]),"nodes touched."
-        logging.debug(lib.nodeList)
-        logging.debug(lib.graphList)
-        logging.debug(helper.outToInLinks(input['links']))
-    else:
-        logging.error("Input takes 0 arguments for input from user, or 3 for input from file <node_type, file>.")
-        gexit()
-    return lib.graphList[len(lib.graphList)]
-
-#
-#  ████████╗ ██████╗     ██████╗  ██████╗
-#  ╚══██╔══╝██╔═══██╗    ██╔══██╗██╔═══██╗
-#     ██║   ██║   ██║    ██║  ██║██║   ██║
-#     ██║   ██║   ██║    ██║  ██║██║   ██║
-#     ██║   ╚██████╔╝    ██████╔╝╚██████╔╝
-#     ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝
-#
-#   Graceful Cleanup
-#
-
-
-def gexit():
-    sys.exit(0)
-
-def get_data(e):
-    ''' Used for debugging'''
-    logging.debug(e.get_data())
-
-func_map = {'input' : ginput, 'output' : goutput,  'print' : gprint, 'strlen' : strlen, 'exit': gexit, 'get_data': get_data}
 
 lexer = lex.lex();
 
@@ -1021,7 +859,7 @@ def p_callchain(p):
     node.children.append(p[1])
     node.chain_next = None
     if len(p)>2:
-        node.chain_next = p[3]
+        node.chain_next = p[3].children[0]
     p[0] = node
 
 def p_call(p):
@@ -1043,21 +881,20 @@ def p_call(p):
         node.children.append(p[1])      #object
         node.children.append(p[3])      #member function
         if len(p) ==7:
-            child = ast.ASTNode()
-            child.type = 'arglist'
-            child.value = p[5]
-            node.children.append(child)
+            # child = ast.ASTNode()
+            # child.type = 'arglist'
+            # child.value = p[5]
+            node.children.append(p[5])
     else:
         node.children.append(p[1])
         if len(p) == 5:
             logging.debug("****func_arg****")
-            child = ast.ASTNode()
-            child.type = 'arglist'
-            child.value = p[3]
-            node.children.append(child)  #actual arguments passed to function
+            # child = ast.ASTNode()
+            # child.type = 'arglist'
+            # child.value = p[3]
+            node.children.append(p[3])  #actual arguments passed to function
         else:
             node.children.append(None)  #No arguments passed
-
     p[0] = node
 
 def p_arg(p):
@@ -1120,7 +957,7 @@ def p_isId(p):
 
 parser = yacc.yacc()
     
-def evaluateAST(a):
+def evaluateAST(a, chained= False):
 
     global ids
 
@@ -1187,11 +1024,12 @@ def evaluateAST(a):
 
     if(a.type == "arglist" or a.type == "returnset"):
         logging.debug("------argList | returnset-----")
-        a.value = []
-
+        node=ast.ASTNode()
+        node.type="terminal"
+        node.value = []
         for e in a.children:
-            a.value.append(evaluateAST(e).value)
-        return a
+            node.value.append(evaluateAST(e).value)
+        return node
 
     if(a.type == "plus"):
         node=ast.ASTNode()
@@ -1352,7 +1190,7 @@ def evaluateAST(a):
             return result
         except KeyError, e:
             logging.critical("Node not found")
-            gexit()
+            helper.gexit()
 
     if(a.type == "member_funccall"):
         logging.debug('-----eval: member func_call----')
@@ -1364,7 +1202,7 @@ def evaluateAST(a):
                 if len(a.children) <= 2:
                     node.value = getattr(lib.modified_list(evaluateAST(helper.ids[a.children[0]])),a.children[1])()
                 else: 
-                    node.value = getattr(helper.ids[a.children[0]].value,a.children[1])(evaluateAST(a.children[2].value).value)
+                    node.value = getattr(helper.ids[a.children[0]].value,a.children[1])(evaluateAST(a.children[2]).value)
             else:
                 if len(a.children) <= 2:
                     try:
@@ -1373,12 +1211,12 @@ def evaluateAST(a):
                         node.value = getattr(helper.ids[a.children[0]],a.children[1])()
                     # node.value = getattr(helper.ids[a.children[0]],a.children[1])()
                 else:
-                    node.value = getattr(helper.ids[a.children[0]],a.children[1])(*evaluateAST(a.children[2].value).value)
+                    node.value = getattr(helper.ids[a.children[0]],a.children[1])(*evaluateAST(a.children[2]).value)
 
             return node
         except KeyError, e:
             logging.error("Unknown variable"+str(a.children[0]))
-            gexit()
+            helper.gexit()
 
         logging.info('Assigned '+str(helper.ids[a.children[0]])+' to '+str(a.children[0]))
         return
@@ -1468,18 +1306,18 @@ def evaluateAST(a):
 
     if(a.type == "callchain"):
         logging.debug('-----eval: callchain----')
-        ret = evaluateAST(a.children[0])
-        if a.chain_next != None:
+        if a.chain_next == None:
+            ret = evaluateAST(a.children[0])
+        else:
+            ret = evaluateAST(a.children[0], True)
             node = ast.ASTNode()
             node.type = "member_funccall"
             helper.ids["__chaining_buffer__"] = ret.value
             node.children.append("__chaining_buffer__")                #object
             node.children.append(a.chain_next.children[0])      #member function
-            if len(a.chain_next.children) >1:
-                child = ast.ASTNode()
-                child.type = 'arglist'
-                child.value = a.chain_next.children[1]
-                node.children.append(child)
+            
+            if a.chain_next.children[1] != None:
+                node.children.append(a.chain_next.children[1])
             try:
                 return evaluateAST(node)
             except Exception, e:
@@ -1498,12 +1336,14 @@ def evaluateAST(a):
         try:
             try:
                 logging.debug("****inbuilt****")
-                func.children.append(func_map[a.children[0]])
+                func.children.append(helper.func_map[a.children[0]])
                 if(len(a.children)> 1):
                     logging.debug("****func_arg****")
                     func.children.append(a.children[1])
                 else:
                     func.children.append(None)
+                if a.children[0] == "output":
+                    func.children.append(chained)
 
             except KeyError:
                 # User-defined
@@ -1519,7 +1359,7 @@ def evaluateAST(a):
         except KeyError, e:
             logging.error("Function not found.")
             logging.error("Offending function: "+a.children[0])
-            gexit()
+            helper.gexit()
 
         if isinstance(func.children[0],ast.ASTNode):
             #Packing
@@ -1532,7 +1372,7 @@ def evaluateAST(a):
                 numArgs = 0
             
             for i in range(0,numArgs):
-                helper.ids[func.children[1].children[i]]= evaluateAST(func.children[3].value).value[i]
+                helper.ids[func.children[1].children[i]]= evaluateAST(func.children[3]).value[i]
                 logging.info('Assigned '+str(func.children[1].children[i])+' to '+str(helper.ids[func.children[1].children[i]])+' inside funccall')
             logging.debug("MODIFIED scope: Before call:",helper.ids)
             evaluateAST(func.children[0])
@@ -1549,12 +1389,15 @@ def evaluateAST(a):
             # helper.scope_out() #Refer above at scope_in() call
             #End unpacking
             logging.debug("MODIFIED scope: After call:",helper.ids)
-        else:    
+        else:
             if func.children[1] != None:
-                x = evaluateAST(func.children[1].value).value
+                x = evaluateAST(func.children[1]).value
                 node.value=func.children[0](*x)
             else:
-                node.value=func.children[0]()                
+                if func.children[0] == helper.goutput and func.children[2] == True:
+                    node.value=func.children[0](None, True)
+                else:    
+                    node.value=func.children[0]()                
 
             try:
                 if func.children[0].__bases__[0].__name__ in ["Node"]:
@@ -1594,9 +1437,9 @@ def evaluateAST(a):
 
     if(a.type == "node-dec"):
         logging.debug('-----eval: node-dec----')
-        new_node_class = type(a.children[0].value, (lib.Node,), dict(((el,None) for i,el in enumerate(a.children[1].value)),__init__=lib.node_init, print_data=lambda self:lib.Node.print_data(self), get_data= lambda self: lib.Node().get_data(self), mapping=dict((i,el) for i,el in enumerate(a.children[1].value))))
+        new_node_class = type(a.children[0].value, (lib.Node,), dict(((el,None) for i,el in enumerate(a.children[1].value)), __init__=lib.node_init, print_data=lambda self:lib.Node.print_data(self), get_data= lambda self: lib.Node().get_data(self), mapping=dict((i,el) for i,el in enumerate(a.children[1].value))))
 
-        func_map[a.children[0].value] = new_node_class
+        helper.func_map[a.children[0].value] = new_node_class
         return
 
     if(a.type == "graph-dec"):
@@ -1694,7 +1537,7 @@ try:
     f.close()
 except Exception, e:
     logging.critical("Unable to initialize.")
-    gexit()
+    helper.gexit()
 
 if fread:
     with open(sys.argv[2]) as f:

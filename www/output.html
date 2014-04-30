@@ -77,10 +77,14 @@
                 bottom: 20px;
             }
 
+            .active {
+                fill: rgb(204,75,68) !important;
+            }
+
             #who {
                 position: absolute;
                 top: 10px;
-                left: 10px;
+                left: 20px;
                 color: white;
             }
 
@@ -129,9 +133,11 @@
             var nodes = [], lastNodeId, links = [];
 
             function showDetails(d,i, node) {
-                content = '<p class="main">' + d3.select(node).data()[0].name + '</span></p>'
-                content += '<hr class="tooltip-hr">'
-                content += '<p class="main">' + "Details" + '</span></p>'
+                data = d3.select(node).data()[0];
+                content = "";
+                for (field in data.mapping) {
+                    content += '<p class="main">' + data.mapping[field] + " : " + data[data.mapping[field]] + '</span></p>'
+                }
                 
                 tooltip.showTooltip(content,d3.event);
             }
@@ -148,7 +154,8 @@
                     mapping = {};
                     index = 0;
                       $.each(data.nodes,function(i,node){
-                            nodes.push({"id": index, "name": node["name"]});
+                            
+                            nodes.push(node);
                             mapping[node["id"]] = index;
                             index = index+1;
                           });
@@ -243,7 +250,9 @@
                             var node = g.selectAll('circle.node')
                                 .data(graph.nodes)
                                 .enter().append('circle')
-                                .attr('class', 'node')
+                                .attr('class', function(d,i) {
+                                    return "node "+d["__tags__"];
+                                })
                                 .attr('r', function(d, i) {
                                     return sizeForNode(i);
                                 })

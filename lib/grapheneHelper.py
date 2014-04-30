@@ -1,6 +1,139 @@
 import grapheneLib as lib
+import ast
+import string
+import logging
+import json
+import random
+import grapheneUI as gui
 
 ids=lib.modified_dict()
+
+def gexit():
+    sys.exit(0)
+
+def gprint(*node):
+    logging.debug('******print******')
+    for e in node:
+        if(isinstance(e,ast.ASTNode)):
+            e = evaluateAST(e)
+        if type(e).__bases__[0].__name__ in ["Node"]:
+            print "Node has"
+            e.print_data();
+        elif isinstance(e, lib.Graph):
+            print "Graph has {"
+            e.print_data();
+            print "}"
+        elif isinstance(e,list):
+            for v in e:
+                if isinstance(v, ast.ASTNode):
+                    gprint(evaluateAST(v).value)
+                else:
+                    gprint(v)
+        else:
+            try:
+                print evaluateAST(e)
+            except Exception, e:
+                logging.error("Unknown expression")
+                gexit()
+            
+
+def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+    return ''.join(random.choice(chars) for _ in range(size))
+
+def ginput(*args):
+    if len(args)==2:
+        #########################################
+        try:
+            f = open(args[1],'r')
+        except Exception, e:
+            logging.error("File Not Found.")
+            gexit()
+            
+        lines = f.readlines()
+        f.close()
+        finalEdgeList = dict()
+        nodes = {}
+        number_of_nodes = len(lib.nodeList)
+    
+        for i,line in enumerate(lines):
+            properties = {}
+            edgeF, edgeT = [int(x) for x in line.split()]
+            
+            properties["__connector__"] = "->"
+            if edgeF not in lib.nodeList.keys():
+                lib.nodeList[edgeF] = func_map[args[0]](id_generator(), id_generator())
+                lib.nodeList[edgeF].id = edgeF
+            if edgeT not in lib.nodeList.keys():
+                lib.nodeList[edgeT] = func_map[args[0]](id_generator(), id_generator())
+                lib.nodeList[edgeT].id = edgeT
+            try:
+                finalEdgeList[edgeF][edgeT] = properties
+            except KeyError:
+                finalEdgeList[edgeF] = {edgeT : properties}
+        
+        lib.graphList[len(lib.graphList)] = lib.Graph(finalEdgeList)
+        print "One graph and",len(lib.nodeList)-number_of_nodes,"nodes touched."
+
+        
+        #########################################
+    elif len(args)==0:
+        input = json.loads(gui.input())
+        lib.graphList[len(lib.graphList)] = lib.Graph(outToInLinks(input['links']))
+
+        # Unfortunately, we have to decide whether to create a template node class or one for EVERY node in input. This one does the former.
+        template_node_class = type("template", (lib.Node,), dict(((k,None) for k,v in input["nodes"][0].iteritems()),__init__=lib.node_init, print_data=lambda self:lib.Node.print_data(self), get_data= lambda self: lib.Node().get_data(self), mapping=dict((i,el) for i,el in enumerate(input["nodes"][0]))))
+    
+        for k in input['nodes']:
+            lib.nodeList[k["id"]] = template_node_class(k);
+
+        print "One graph and",len(input["nodes"]),"nodes touched."
+        logging.debug(lib.nodeList)
+        logging.debug(lib.graphList)
+        logging.debug(outToInLinks(input['links']))
+    else:
+        logging.error("Input takes 0 arguments for input from user, or 3 for input from file <node_type, file>.")
+        gexit()
+    return lib.graphList[len(lib.graphList)-1]
+
+def goutput(graph=None, chained=False):
+    # Prints state to D3
+    # Note: state = ALL graphs
+
+    # Dump state to json
+    nodes = []
+    graphs = []
+    if graph == None:
+        nodes = inToOutNodes(lib.nodeList)
+        for k,g in lib.graphList.iteritems():
+            graphs.extend(inToOutLinks(g.get_data()))
+    else:
+        graphs.extend(inToOutLinks(graph.get_data()))
+        g = graph.get_data()
+        graph_nodelist = {}
+        for source, destinations in g.iteritems():
+            graph_nodelist[source] = lib.nodeList[source]
+            for destination, properties in destinations.iteritems():
+                graph_nodelist[destination] = lib.nodeList[destination]
+
+        nodes = inToOutNodes(graph_nodelist)
+
+    # Nodes and Links converted from IR to json
+    logging.debug("nodes:"+str(nodes))
+    logging.debug("links:"+str(graphs))
+
+    # Dump json to file
+    with open('./proc/state.json', 'w') as outfile:
+         json.dump({"nodes":nodes, "lastNodeId": len(nodes)-1, "links": graphs}, outfile)
+
+    if not chained:
+        gui.output()
+    return_val = lib.Graph(outToInLinks(graphs))
+    lib.globalLastGraphIDVal = lib.globalLastGraphIDVal - 1
+
+    return return_val
+
+func_map = {'input' : ginput, 'output' : goutput,  'print' : gprint, 'exit': gexit}
+
 
 def scope_in():
     global ids

@@ -11,6 +11,9 @@ import copy
 from collections import namedtuple
 import logging
 import inspect
+import grapheneUI as gui
+import ast
+import json
 
 graphList = {}
 nodeList = {}
@@ -69,12 +72,16 @@ class Node(object):
 			print "\t", v, ":", getattr(child, v)
 	
 	id = -1
+	__tags__ = " "
+	__cluster__ = None
 
 	def get_data(self,child):
 		result = {}
 		for a in inspect.getmembers(child, lambda a:not(inspect.isroutine(a))):
 			if not(a[0].startswith('__') and a[0].endswith('__')):
 				result[a[0]] = a[1]
+			result["__tags__"] = self.__tags__
+			result["__cluster__"] = self.__cluster__
 		return result
 
 def node_init(self, *node_data):
@@ -109,7 +116,7 @@ class Graph:
 	def __init__(self, edgeList = None, gtype = 'd', gkey = "id"):
 		global globalLastGraphIDVal
 		
-		self.id = globalLastGraphIDVal
+		self.id = globalLastGraphIDVal + 1
 		globalLastGraphIDVal = globalLastGraphIDVal + 1
 
 		if edgeList is not None:
@@ -121,6 +128,33 @@ class Graph:
 					except KeyError, e:
 						self.shadowEdgeList[destination] = { source : None }
 
+	def overlay(self, overlay_list=None):
+		overlay_node_list = []
+		if overlay_list:
+			if isinstance(overlay_list, ast.ASTNode):
+				for e in overlay_list.value:
+					if e.__class__.__bases__[0].__name__ in ["Node"]:
+						overlay_node_list.append(e.id)
+					else:	
+						overlay_node_list.append(e.value)
+			else:
+				overlay_node_list.append(overlay_list.id)
+		else:
+			gui.output()
+			return
+
+		state = json.loads(open('./proc/state.json', 'r').read())
+		node_ref = {}
+		for node in state["nodes"]:
+			node_ref[node["id"]] = node
+		
+		for node_id in overlay_node_list:
+			node_ref[node_id]["__tags__"] = node_ref[node_id]["__tags__"] + "active"
+
+		with open('./proc/state.json', 'w') as outfile:
+			json.dump(state, outfile)
+
+		gui.output()
 
 	def get_id(self):
 		return self.id
@@ -164,9 +198,14 @@ class Graph:
 	# Print to console
 	def print_data(self):
 		for k,v in self.edgeList.iteritems():
-			print '\tNode(',k,')', 
+			print '\n\tNode(',k,')', 
+			first = True
 			for k1,v1 in v.iteritems():
-				print v1["__connector__"],'Node(',k1,')'
+				if first:
+					print v1["__connector__"],'Node(',k1,')'
+					first = False
+				else:
+					print "\t\t   ",v1["__connector__"],'Node(',k1,')'
 				for k2,v2 in v1.iteritems():
 					if k2 in ["__connector__"]:
 						continue
