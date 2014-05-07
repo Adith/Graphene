@@ -42,11 +42,10 @@ if len(sys.argv) > 1:
     if "-f" in sys.argv:
         fread = True
 
-function=dict()
 
 NumberTypes = (types.IntType, types.LongType, types.FloatType, types.ComplexType)
 
-tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'FOREACH', 'IN', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR', 'ADD_STORE', 'REMOVE_STORE')
+tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'LAMDA', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'FOREACH', 'IN', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR', 'ADD_STORE', 'REMOVE_STORE')
 literals = [';', '=', '+', '-', '*', '/']
 t_GR = r'\>'
 t_LS = r'\<'
@@ -65,10 +64,11 @@ RESERVED = {
   "NodeType": "NODE",
   "Graph": "GRAPH",
   "Edge": "EDGE",
-  "d": "GRAPHTYPE",
-  "u": "GRAPHTYPE",
+  "d{": "GRAPHTYPE",
+  "u{": "GRAPHTYPE",
   "->": "CONNECTOR",
-  "<->": "CONNECTOR"
+  "<->": "CONNECTOR",
+  "lambda": "LAMDA",
   }
 
 t_IMPLY = r'=>'
@@ -167,6 +167,47 @@ def p_error(p):
     print 'Current stack:', cvars['symstack']
     sys.exit()
 
+def cluster(graph,lamda):
+    clusters = []
+    lamda = lambda x,y:x.get_data()['age']==y.get_data()['age']
+    nodes = graph.getNodes()
+    for n in nodes:
+        print n.get_data()
+    if lamda(nodes[0],nodes[1]):
+        clusters.append([nodes[0],nodes[1]])
+    else:
+        clusters.append([nodes[0]])
+        clusters.append([nodes[1]])
+    print clusters
+    nodes = nodes[2:]
+    for node in nodes:
+        cluster_ids = []
+        index = 0 
+        for cluster in clusters:
+            if lamda(node,cluster[0]):
+                cluster.append(node)
+                cluster_ids.append(index)
+            index+=1
+        if len(cluster_ids)==0:
+            clusters.append([node])
+
+        # Merge all clusters a node belongs to
+        if len(cluster_ids)>1:
+            clusters[cluster_ids[0]] = list(set(clusters[cluster_ids]))
+            for ind in range(1,len(cluster_ids)):
+                clusters[ind]=None
+        clusters = filter(lambda a: a != None, clusters)
+    print len(clusters)
+    index=0
+    for cluster in clusters:
+        for node in cluster: 
+            #print lib.nodeList[node.get_data()['id']].get_data()
+            node.__cluster__=index
+        index+=1
+    #print nodeList
+    return clusters
+
+
 lexer = lex.lex();
 
 ####################### TO BE MODIFIED ##############################
@@ -233,8 +274,8 @@ def p_keylist(p):
         p[0] += p[3]
 
 def p_graph(p):
-    '''graph-dec : GRAPH ID HAS GRAPHTYPE CURLBEGIN edgelist CURLEND
-                 | GRAPH ID HAS GRAPHTYPE CURLBEGIN edgelist CURLEND ON idOrAlphanum '''
+    '''graph-dec : GRAPH ID HAS GRAPHTYPE edgelist CURLEND
+                 | GRAPH ID HAS GRAPHTYPE edgelist CURLEND ON idOrAlphanum '''
 
     logging.debug("----- Graph declaration -----")
 
@@ -351,6 +392,46 @@ def p_func(p):
     Node.children.append(compoundChild)
 
     p[0]=Node
+
+def p_lambda(p):
+    ''' lamda : LAMDA parameters COLON funccompoundstatement IMPLY returnarguments'''
+    logging.debug("In lambda")
+    termNode = ast.ASTNode()
+    termNode.type = "lambda"
+    termNode.children.append(p[2])
+    termNode.children.append(p[4])
+    termNode.children.append(p[6])
+    p[0] = termNode
+
+def p_assignlambda(p):
+    '''assignmentexpression : ID '=' lamda'''
+    logging.debug("-------In assignLambda-------")
+
+    node = ast.ASTNode()
+    node.type = "lamdaassign"
+    #node.children.append(p[1])
+    #node.children.append(p[3])
+
+    ####### Return Arg. None ####
+    Node = ast.ASTNode()
+    Node.type = 'return-args'
+    if len(p) == 3:
+        Node.children.append(None)
+    
+    node.children.append(p[1])  #ID
+
+    compoundChild = ast.ASTNode()
+    compoundChild.type = 'lamda-signature'
+    compoundChild.children.append(p[3].children[1])  #statements
+    compoundChild.children.append(p[3].children[0])  #arguments
+    compoundChild.children.append(p[3].children[2])  #return
+    print '++++++++++++++++++++++++'
+    print Node.children
+    print '++++++++++++++++++++++++'
+    node.children.append(compoundChild)
+
+    p[0]=node 
+
 
 def p_parameters(p):
     """parameters : LPAREN RPAREN

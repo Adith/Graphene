@@ -1,5 +1,7 @@
 import logging
 
+function=dict()
+
 class Terminal(object):
     def __init__(self):
         self.id = None
@@ -66,6 +68,18 @@ def evaluateAST(a, chained= False):
     # if(a.type == "values"):
     #     logging.debug("Terminal value: "+str(a.value))
         # return a
+
+    if a.type == "lambda":
+        for child in a.children:
+            print child.type
+        return
+
+    if a.type == "lamdaassign":
+        print a.children[0], evaluateAST(a.children[1])
+        function[a.children[0]]=a.children[1]
+        print function
+        print "lambda assigment"
+        return
 
     if(a.type == "edgelist"):
         a.value = {}
@@ -444,14 +458,14 @@ def evaluateAST(a, chained= False):
             evaluateAST(func.children[0])
             
             node.value = []
-
-            if func.children[2].children[0] != None:       
-                if len(func.children[2].children) ==1:
-                    node.value = evaluateAST(func.children[2].children[0]).value
-                else:
-                    for ret in func.children[2].children:
-                        node.value.append(evaluateAST(ret))
-            #Unpacking
+            if len(func.children[2].children)!=0:
+                if func.children[2].children[0] != None:       
+                    if len(func.children[2].children) ==1:
+                        node.value = evaluateAST(func.children[2].children[0]).value
+                    else:
+                        for ret in func.children[2].children:
+                            node.value.append(evaluateAST(ret))
+                #Unpacking
             # helper.scope_out() #Refer above at scope_in() call
             #End unpacking
             logging.debug("MODIFIED scope: After call:",helper.ids)
