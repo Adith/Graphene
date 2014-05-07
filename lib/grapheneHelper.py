@@ -5,6 +5,7 @@ import logging
 import json
 import random
 import grapheneUI as gui
+import sys
 
 ids=lib.modified_dict()
 
@@ -15,7 +16,7 @@ def gprint(*node):
     logging.debug('******print******')
     for e in node:
         if(isinstance(e,ast.ASTNode)):
-            e = evaluateAST(e)
+            e = ast.evaluateAST(e)
         if type(e).__bases__[0].__name__ in ["Node"]:
             print "Node has"
             e.print_data();
@@ -26,16 +27,15 @@ def gprint(*node):
         elif isinstance(e,list):
             for v in e:
                 if isinstance(v, ast.ASTNode):
-                    gprint(evaluateAST(v).value)
+                    gprint(ast.evaluateAST(v).value)
                 else:
                     gprint(v)
         else:
             try:
-                print evaluateAST(e)
+                print ast.evaluateAST(e)
             except Exception, e:
                 logging.error("Unknown expression")
                 gexit()
-            
 
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))

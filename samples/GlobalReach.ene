@@ -33,4 +33,4 @@ def (graph) => GlobalReach
 g = input("person","data/0.edges");
 
 l = GlobalReach(graph);
-output(g).overlay(l);
+output().overlay(l);
