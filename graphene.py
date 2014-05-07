@@ -121,6 +121,14 @@ t_CONNECTOR = r'<?->'
 
 t_GRAPHTYPE = r'(d|u){1}'
 
+precedence = (
+	('left','LOGAND'),
+	('left', 'EQUAL', 'NEQUAL'),
+	('left','LS','GR','GRTEQ', 'LESSEQ'),
+	('left', '+', '-'),
+	('left', '*', '/'),
+)
+
 def t_ID(t):
     r'[a-zA-Z\_][a-zA-Z\_0-9]*'
     t.type = RESERVED.get(t.value, "ID")
