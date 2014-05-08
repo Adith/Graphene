@@ -45,6 +45,52 @@ if len(sys.argv) > 1:
 
 NumberTypes = (types.IntType, types.LongType, types.FloatType, types.ComplexType)
 
+errorDict = {'ID':'id', 
+    'LPAREN':'\'(\'', 
+    'DEF':'\'def\'', 
+    'IMPLY': '\'=>\'', 
+    'LAMDA':'\'lambda\'', 
+    'RPAREN':'\')\'', 
+    'STRING': 'string',
+    'SQRBEGIN':'\'[\'', 
+    'SQREND':'\']\'', 
+    'CURLBEGIN':'\'{\'', 
+    'CURLEND':'\'}\'', 
+    'NUMBER': 'number',
+    'IF':'\'if\'', 
+    'ELSE':'\'else\'', 
+    'COMMA':'\',\'',  
+    'GR':'\'>\'', 
+    'LS':'\'<\'', 
+    'NODE':'\'NodeType\'', 
+    'GRAPH':'\'Graph\'',
+    'GRAPHTYPE':'\'d\', \'u\'', 
+    'CONNECTOR':'\'->\', \'<->\'', 
+    'NEW':'\'new\'', 
+    'NEWLINE':'\'\\n\'', 
+    'DOT':'\'.\'', 
+    'WHILE':'\'while\'', 
+    'FOR':'\'for\'', 
+    'FOREACH':'\'foreach\'', 
+    'IN':'\'in\'', 
+    'HAS':'\'has\'', 
+    'ON':'\'on\'', 
+    'COLON':'\':\'', 
+    'GRTEQ':'\'>=\'',
+    'LESSEQ':'\'<=\'',
+    'EQUAL':'\'=\'',
+    'NEQUAL':'\'!=\'',
+    'LOGAND':'\'&&\'',
+    'LOGOR':'\'||\'', 
+    'ADD_STORE':'\'+=\'', 
+    'REMOVE_STORE':'\'-=\'',
+    '=':'\'=\'',
+    ';':'\';\'',
+    '+': '\'+\'',
+    '*': '\'+\'',
+    '-': '\'-\'',
+    '/': '\'/\''}
+
 tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'LAMDA', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'FOREACH', 'IN', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR', 'ADD_STORE', 'REMOVE_STORE')
 literals = [';', '=', '+', '-', '*', '/']
 t_GR = r'\>'
@@ -101,13 +147,13 @@ t_REMOVE_STORE = r'-='
 
 #TODO - this symbol is giving lexer error -NEHA
 # add parsing for logical OR.
-#t_LOGOR = r'\||'
+t_LOGOR = r'\|\|'
 
 t_LPAREN = r'\('
 
 t_RPAREN = r'\)'
 
-t_STRING = r'[\"|\'][a-zA-Z\ /.:0-9(){}]*[\"|\']'
+t_STRING = r'[\"\'][a-zA-Z\ /.:0-9(){}]*[\"\']'
 
 t_COMMA = r','
 
@@ -122,7 +168,7 @@ t_CONNECTOR = r'<?->'
 t_GRAPHTYPE = r'(d|u){1}'
 
 precedence = (
-	('left','LOGAND'),
+	('left','LOGAND','LOGOR'),
 	('left', 'EQUAL', 'NEQUAL'),
 	('left','LS','GR','GRTEQ', 'LESSEQ'),
 	('left', '+', '-'),
@@ -164,15 +210,23 @@ def p_error(p):
     if p is None:
         print "Syntax error: unexpected EOF"
     else:
-        print "Syntax error at line {}: unexpected token {}".format(p.lineno, p.value)
+        print "Syntax error at line {}: unexpected token '{}'".format(p.lineno, p.value)
 
     #Ugly hack since Ply doesn't provide any useful error information
     import inspect
     frame = inspect.currentframe()
+
     cvars = frame.f_back.f_locals
-    print 'Expected:', ', '.join(cvars['actions'][cvars['state']].keys())
-    print 'Found:', cvars['ltype']
-    print 'Current stack:', cvars['symstack']
+    errorOutput = []
+
+    for k in cvars['actions'][cvars['state']].keys():
+        errorOutput.append(errorDict[k])
+        # print errorDict[k]
+
+    print 'Expected one of: ',', '.join(errorOutput) 
+    print '\n'
+    # print 'Found:', cvars['ltype']
+    # print 'Current stack:', cvars['symstack']
     sys.exit()
 
 def cluster(graph,lamda):
@@ -236,7 +290,7 @@ def p_declaration(p):
                    | vardec'''
     logging.debug("----- declaration ------")
     p[0]= p[1]
-    ast.evaluateAST(p[0])
+    ast.evaluateAST(p[0], p.lexer.lineno)
 
 def p_vardec(p):
     '''vardec : node-dec ';'
@@ -351,7 +405,7 @@ def p_decstatement(p):
     '''declaration : statement'''
     logging.debug("---- declaration ---")
     p[0]=p[1]
-    ast.evaluateAST(p[0])
+    ast.evaluateAST(p[0], p.lexer.lineno)
 
 def p_compoundstatement(p):
     '''statement : compoundstatement'''
@@ -840,9 +894,10 @@ def p_expression_relop(p):
 ##        elif p[2] == '>=' : p[0] = p[1] >= p[3]
 ##        elif p[2] == '<=' : p[0] = p[1] <= p[3]
 
-# TODO - add grammar for logical OR - symbol waw giving error - NEHA.
+# TODO - add grammar for logical OR - symbol was giving error - NEHA.
 def p_expression_logicalop(p):
-    '''expression : expression LOGAND expression'''
+    '''expression : expression LOGAND expression
+                  | expression LOGOR expression'''
     logging.debug(str(p[1])+str(p[3]))
 
     if p[2] == '&&' :
@@ -1076,5 +1131,9 @@ else:
 
         except EOFError:
             break
+
+        except KeyboardInterrupt:
+            print "\n"
+            helper.gexit()
         if not s: continue
         parser.parse(s)
