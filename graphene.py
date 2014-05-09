@@ -406,8 +406,8 @@ def p_lambda(p):
     logging.debug("In lambda")
     termNode = ast.ASTNode()
     termNode.type = "lambda"
-    termNode.children.append(p[2])
     termNode.children.append(p[4])
+    termNode.children.append(p[2])
     termNode.children.append(p[6])
     p[0] = termNode
 
@@ -430,12 +430,12 @@ def p_assignlambda(p):
 
     compoundChild = ast.ASTNode()
     compoundChild.type = 'lamda-signature'
-    compoundChild.children.append(p[3].children[1])  #statements
-    compoundChild.children.append(p[3].children[0])  #arguments
+    compoundChild.children.append(p[3].children[0])  #statements
+    compoundChild.children.append(p[3].children[1])  #arguments
     compoundChild.children.append(p[3].children[2])  #return
-    print '++++++++++++++++++++++++'
-    print Node.children
-    print '++++++++++++++++++++++++'
+    logging.debug('++++++++++++++++++++++++')
+    logging.debug(Node.children)
+    logging.debug('++++++++++++++++++++++++')
     node.children.append(compoundChild)
 
     p[0]=node 

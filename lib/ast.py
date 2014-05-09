@@ -77,8 +77,10 @@ def evaluateAST(a, chained= False):
     if a.type == "lamdaassign":
         print a.children[0], evaluateAST(a.children[1])
         function[a.children[0]]=a.children[1]
-        print function
-        print "lambda assigment"
+        helper.ids[a.children[0]]=a.children[1]
+        #print ("Assigning ",a.children[0]," a value of ",a.children[1])
+        #print function
+        #print "lambda assigment"
         return
 
     if(a.type == "edgelist"):
@@ -416,7 +418,10 @@ def evaluateAST(a, chained= False):
         try:
             try:
                 logging.debug("****inbuilt****")
+                
+                logging.debug(function)
                 func.children.append(helper.func_map[a.children[0]])
+
                 if(len(a.children)> 1):
                     logging.debug("****func_arg****")
                     func.children.append(a.children[1])
@@ -428,16 +433,32 @@ def evaluateAST(a, chained= False):
             except KeyError:
                 # User-defined
                 logging.debug("****userdefined****")
-                func.children.append(function[a.children[0]].children[0])    #statements
-                func.children.append(function[a.children[0]].children[1])    #arguments
-                func.children.append(function[a.children[0]].children[2])    #returnargs
-                if len(a.children) >1:
-                    logging.debug("****func_arg****")
-                    func.children.append(a.children[1])  #actual arguments passed to function
-                else:
-                    func.children.append(None)  #No arguments passed
+                try:
+                    func.children.append(function[a.children[0]].children[0])    #statements
+                    func.children.append(function[a.children[0]].children[1])    #arguments
+                    func.children.append(function[a.children[0]].children[2])    #returnargs
+                    if len(a.children) >1:
+                        logging.debug("****func_arg****")
+                        #logging.debug((a.children[1].children[0].type))
+                        #logging.debug((a.children[1].children[1].type))
+                        func.children.append(a.children[1])  #actual arguments passed to function
+                    else:
+                        func.children.append(None)  #No arguments passed
+                except KeyError, e:
+                    logging.debug(helper.ids)
+                    func.children.append(helper.ids[a.children[0]].children[0])    #statements
+                    func.children.append(helper.ids[a.children[0]].children[1])    #arguments
+                    func.children.append(helper.ids[a.children[0]].children[2])    #returnargs
+                    if len(a.children) >1:
+                        logging.debug("****func_arg****")
+                        #logging.debug((a.children[1].children[0].type))
+                        #logging.debug((a.children[1].children[1].type))
+                        func.children.append(a.children[1])  #actual arguments passed to function
+                        logging.debug(a.children[1].children[0].children)
+                    #logging.debug("LAMBDA!!!"+helper.ids[a.children[0]])
         except KeyError, e:
-            logging.error("Function not found.")
+            logging.debug("Function not found."+a.children[0])
+            logging.debug(helper.ids)
             logging.error("Offending function: "+a.children[0])
             helper.gexit()
 
