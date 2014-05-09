@@ -37,9 +37,6 @@ def gprint(*node):
                 logging.error("Unknown expression")
                 gexit()
 
-def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
-    return ''.join(random.choice(chars) for _ in range(size))
-
 def ginput(*args):
     if len(args)==2:
         #########################################
@@ -61,10 +58,10 @@ def ginput(*args):
             
             properties["__connector__"] = "->"
             if edgeF not in lib.nodeList.keys():
-                lib.nodeList[edgeF] = func_map[args[0]](id_generator(), id_generator())
+                lib.nodeList[edgeF] = func_map[args[0]]("generate", "generate")
                 lib.nodeList[edgeF].id = edgeF
             if edgeT not in lib.nodeList.keys():
-                lib.nodeList[edgeT] = func_map[args[0]](id_generator(), id_generator())
+                lib.nodeList[edgeT] = func_map[args[0]]("generate", "generate")
                 lib.nodeList[edgeT].id = edgeT
             try:
                 finalEdgeList[edgeF][edgeT] = properties

@@ -42,7 +42,6 @@ if len(sys.argv) > 1:
     if "-f" in sys.argv:
         fread = True
 
-
 NumberTypes = (types.IntType, types.LongType, types.FloatType, types.ComplexType)
 
 tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'LAMDA', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'FOREACH', 'IN', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR', 'ADD_STORE', 'REMOVE_STORE')
@@ -107,7 +106,7 @@ t_LPAREN = r'\('
 
 t_RPAREN = r'\)'
 
-t_STRING = r'[\"|\'][a-zA-Z\ /.:0-9(){}]*[\"|\']'
+t_STRING = r'[\"\'][a-zA-Z\ /.:0-9(){}]*[\"\']'
 
 t_COMMA = r','
 
@@ -119,7 +118,7 @@ t_NEW = r'new'
 
 t_CONNECTOR = r'<?->'
 
-t_GRAPHTYPE = r'(d|u){1}'
+# t_GRAPHTYPE = r'[du]{'
 
 precedence = (
 	('left','LOGAND'),
@@ -128,6 +127,11 @@ precedence = (
 	('left', '+', '-'),
 	('left', '*', '/'),
 )
+
+def t_GRAPHTYPE(t):
+    r'[du]{'
+    t.type = RESERVED.get(t.value, "GRAPHTYPE")
+    return t
 
 def t_ID(t):
     r'[a-zA-Z\_][a-zA-Z\_0-9]*'
@@ -295,7 +299,7 @@ def p_graph(p):
     gid.value = p[2]
     gtype = ast.ASTNode()
     gtype.type = "terminal"
-    gtype.value = p[4]
+    gtype.value = p[4][:1]
     edges = p[6]
 
     key = ast.ASTNode()
@@ -308,7 +312,7 @@ def p_graph(p):
     node.children.append(gid)
     node.children.append(gtype)
     node.children.append(key)
-    node.children.append(p[6])
+    node.children.append(p[5])
 
     p[0] = node
 
