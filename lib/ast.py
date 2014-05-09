@@ -191,37 +191,80 @@ def evaluateAST(a, lineno= "unknown", chained= False):
     if(a.type == "less"):
         node=ASTNode()
         node.type="terminal"
-        node.value=evaluateAST(a.children[0], lineno).value<evaluateAST(a.children[1], lineno).value;
+
+        value1 = evaluateAST(a.children[0], lineno).value
+        value2 = evaluateAST(a.children[1], lineno).value
+
+        if value1 is None or value2 is None:
+            print "Error at line "+str(lineno)+": Used identifier not defined\n"
+            sys.exit(-1)
+
+        node.value=value1<value2;
         return node
 
     if(a.type == "greater"):
         node=ASTNode()
         node.type="terminal"
-        node.value=evaluateAST(a.children[0], lineno).value>evaluateAST(a.children[1], lineno).value;
+        value1 = evaluateAST(a.children[0], lineno).value
+        value2 = evaluateAST(a.children[1], lineno).value
+
+        if value1 is None or value2 is None:
+            print "Error at line "+str(lineno)+": Used identifier not defined\n"
+            sys.exit(-1)
+
+        node.value=value1>value2;
         return node
 
     if(a.type == "greaterequal"):
         node=ASTNode()
         node.type="terminal"
-        node.value=evaluateAST(a.children[0], lineno).value>=evaluateAST(a.children[1], lineno).value;
+        value1 = evaluateAST(a.children[0], lineno).value
+        value2 = evaluateAST(a.children[1], lineno).value
+
+        if value1 is None or value2 is None:
+            print "Error at line "+str(lineno)+": Used identifier not defined\n"
+            sys.exit(-1)
+
+        node.value=value1>=value2;
         return node
 
     if(a.type == "lessequal"):
         node=ASTNode()
         node.type="terminal"
-        node.value=evaluateAST(a.children[0], lineno).value<=evaluateAST(a.children[1], lineno).value;
+        value1 = evaluateAST(a.children[0], lineno).value
+        value2 = evaluateAST(a.children[1], lineno).value
+
+        if value1 is None or value2 is None:
+            print "Error at line "+str(lineno)+": Used identifier not defined\n"
+            sys.exit(-1)
+
+        node.value=value1<=value2;
         return node
 
     if(a.type == "equal"):
         node=ASTNode()
         node.type="terminal"
-        node.value=evaluateAST(a.children[0], lineno).value==evaluateAST(a.children[1], lineno).value;
+        value1 = evaluateAST(a.children[0], lineno).value
+        value2 = evaluateAST(a.children[1], lineno).value
+
+        if value1 is None or value2 is None:
+            print "Error at line "+str(lineno)+": Used identifier not defined\n"
+            sys.exit(-1)
+
+        node.value=value1==value2;
         return node
 
     if(a.type == "nequal"):
         node=ASTNode()
         node.type="terminal"
-        node.value=evaluateAST(a.children[0], lineno).value!=evaluateAST(a.children[1], lineno).value;
+        value1 = evaluateAST(a.children[0], lineno).value
+        value2 = evaluateAST(a.children[1], lineno).value
+
+        if value1 is None or value2 is None:
+            print "Error at line "+str(lineno)+": Used identifier not defined\n"
+            sys.exit(-1)
+
+        node.value=value1!=value2;
         return node
 
     if(a.type == "land"):
@@ -606,12 +649,11 @@ def evaluateAST(a, lineno= "unknown", chained= False):
 
     #while loop
     if(a.type == 'while'):
-        #TODO - change condition to True/False --Pooja
         logging.debug("evaluateAST of while")
         logging.debug("*********************")
         logging.debug(evaluateAST(a.children[0], lineno))
         logging.debug("*********************")
-        while (evaluateAST(a.children[0], lineno).value != 0):
+        while (evaluateAST(a.children[0], lineno).value):
             evaluateAST(a.children[1], lineno)
 
     if(a.type == "if"):

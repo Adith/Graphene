@@ -33,6 +33,7 @@ import logging
 
 fread = False
 logger = logging.getLogger()
+lineNo = 0;
 
 if len(sys.argv) > 1:
     if "-d" in sys.argv:
@@ -91,7 +92,7 @@ errorDict = {'ID':'id',
     '-': '\'-\'',
     '/': '\'/\''}
 
-tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'LAMDA', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'FOREACH', 'IN', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR', 'ADD_STORE', 'REMOVE_STORE')
+tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'LAMDA', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'FOREACH', 'IN', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR', 'ADD_STORE', 'REMOVE_STORE','TRUE','FALSE')
 literals = [';', '=', '+', '-', '*', '/']
 t_GR = r'\>'
 t_LS = r'\<'
@@ -115,6 +116,8 @@ RESERVED = {
   "->": "CONNECTOR",
   "<->": "CONNECTOR",
   "lambda": "LAMDA",
+  "True":"TRUE",
+  "False":"FALSE"
   }
 
 t_IMPLY = r'=>'
@@ -290,7 +293,7 @@ def p_declaration(p):
                    | vardec'''
     logging.debug("----- declaration ------")
     p[0]= p[1]
-    ast.evaluateAST(p[0], p.lexer.lineno)
+    ast.evaluateAST(p[0], lineNo)
 
 def p_vardec(p):
     '''vardec : node-dec ';'
@@ -405,7 +408,7 @@ def p_decstatement(p):
     '''declaration : statement'''
     logging.debug("---- declaration ---")
     p[0]=p[1]
-    ast.evaluateAST(p[0], p.lexer.lineno)
+    ast.evaluateAST(p[0], lineNo)
 
 def p_compoundstatement(p):
     '''statement : compoundstatement'''
@@ -529,8 +532,8 @@ def p_returnarguments(p):
     p[0] = Node
 
 def p_returnset(p):
-    '''returnset : idOrAlphanum
-                | idOrAlphanum COMMA returnset'''
+    '''returnset : expression
+                | expression COMMA returnset'''
 
     logging.debug("returnset")
 
@@ -543,18 +546,6 @@ def p_returnset(p):
         arglistNode.children.extend(p[3].children)
     p[0] = arglistNode
 
-######################################################################
-
-#
-#  ████████╗ ██████╗     ██████╗  ██████╗
-#  ╚══██╔══╝██╔═══██╗    ██╔══██╗██╔═══██╗
-#     ██║   ██║   ██║    ██║  ██║██║   ██║
-#     ██║   ██║   ██║    ██║  ██║██║   ██║
-#     ██║   ╚██████╔╝    ██████╔╝╚██████╔╝
-#     ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝
-#
-#   Handle multiple statements
-#
 
 def p_statementlist(p):
     '''statementlist : statement
@@ -894,7 +885,6 @@ def p_expression_relop(p):
 ##        elif p[2] == '>=' : p[0] = p[1] >= p[3]
 ##        elif p[2] == '<=' : p[0] = p[1] <= p[3]
 
-# TODO - add grammar for logical OR - symbol was giving error - NEHA.
 def p_expression_logicalop(p):
     '''expression : expression LOGAND expression
                   | expression LOGOR expression'''
@@ -988,6 +978,16 @@ def p_expression_name(p):
         logging.error(str("Undefined name '%s'" % p[1]))
         p[0] = 0
 
+def p_expression_true(p):
+    '''expression : TRUE
+                  | FALSE '''
+    logging.debug("p_expressionBoolean")
+    termNode = ast.ASTNode()
+    termNode.type = "terminal"
+    termNode.value = p[1]
+    p[0] = termNode
+    logging.debug(p[0].type)
+
 def p_exp_call(p):
     '''expression : callchain'''
     p[0] = p[1]
@@ -1007,8 +1007,8 @@ def p_callchain(p):
     p[0] = node
 
 def p_call(p):
-    '''call : ID LPAREN arglist RPAREN
-            | ID DOT ID LPAREN arglist RPAREN
+    '''call : ID LPAREN callarglist RPAREN
+            | ID DOT ID LPAREN callarglist RPAREN
             | ID DOT ID LPAREN RPAREN
             | ID LPAREN RPAREN'''
 
@@ -1041,6 +1041,23 @@ def p_call(p):
             node.children.append(None)  #No arguments passed
     p[0] = node
 
+def p_callarglist(p):
+    '''callarglist : expression COMMA arglist
+               | expression'''
+
+    logging.debug("callarglist")
+
+    arglistNode = ast.ASTNode()
+    arglistNode.type = "arglist"
+
+    arglistNode.children.append(p[1])
+
+    if len(p) > 2:
+        arglistNode.children.append(p[3].children[0])
+
+    p[0] = arglistNode
+    logging.debug(p[0].type)
+
 def p_arg(p):
     '''arglist : idOrAlphanum COMMA arglist
                | idOrAlphanum'''
@@ -1069,6 +1086,21 @@ def p_isNumber(p):
     termNode = ast.ASTNode()
     termNode.type = "terminal"
     termNode.value = int(p[1])
+    p[0] = termNode
+    logging.debug(p[0].type)
+
+def p_isBoolean(p):
+    ''' idOrAlphanum : TRUE 
+                     | FALSE'''
+
+    logging.debug("idorstr"+ str(len(p)))
+    for x in p:
+        logging.debug(x)
+    logging.debug("p_isBoolean")
+
+    termNode = ast.ASTNode()
+    termNode.type = "terminal"
+    termNode.value = p[1]
     p[0] = termNode
     logging.debug(p[0].type)
 
@@ -1113,6 +1145,7 @@ if fread:
     with open(sys.argv[2]) as f:
         s = ' '
         for line in f:
+            lineNo += 1
             s = s+line.rstrip()
             if len(s) == 0:
                 s = ' '
@@ -1124,10 +1157,12 @@ else:
     while True:
         try:
             s=raw_input('graphene> ').rstrip()
+            lineNo += 1
             if len(s) == 0:
                 s = ' '
             while s[-1] != ';' or helper.completeCodeStmt(s) == False:
                 s = s+raw_input('>');
+                lineNo += 1
 
         except EOFError:
             break
