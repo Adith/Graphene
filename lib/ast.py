@@ -119,8 +119,12 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         value1 = evaluateAST(a.children[0], lineno).value
         value2 = evaluateAST(a.children[1], lineno).value
 
-        if value1 is None or value2 is None:
-            print "Error at line "+str(lineno)+": Used identifier not defined\n"
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            sys.exit(-1)
+
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
             sys.exit(-1)
 
         try:
@@ -138,8 +142,12 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         value1 = evaluateAST(a.children[0], lineno).value
         value2 = evaluateAST(a.children[1], lineno).value
 
-        if value1 is None or value2 is None:
-            print "Error at line "+str(lineno)+": Used identifier not defined\n"
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            sys.exit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
             sys.exit(-1)
 
         try:
@@ -157,8 +165,12 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         value1 = evaluateAST(a.children[0], lineno).value
         value2 = evaluateAST(a.children[1], lineno).value
 
-        if value1 is None or value2 is None:
-            print "Error at line "+str(lineno)+": Used identifier not defined\n"
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            sys.exit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
             sys.exit(-1)
 
         try:
@@ -176,8 +188,12 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         value1 = evaluateAST(a.children[0], lineno).value
         value2 = evaluateAST(a.children[1], lineno).value
 
-        if value1 is None or value2 is None:
-            print "Error at line "+str(lineno)+": Used identifier not defined\n"
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            sys.exit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
             sys.exit(-1)
 
         try:
@@ -195,8 +211,12 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         value1 = evaluateAST(a.children[0], lineno).value
         value2 = evaluateAST(a.children[1], lineno).value
 
-        if value1 is None or value2 is None:
-            print "Error at line "+str(lineno)+": Used identifier not defined\n"
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            sys.exit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
             sys.exit(-1)
 
         node.value=value1<value2;
@@ -208,8 +228,12 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         value1 = evaluateAST(a.children[0], lineno).value
         value2 = evaluateAST(a.children[1], lineno).value
 
-        if value1 is None or value2 is None:
-            print "Error at line "+str(lineno)+": Used identifier not defined\n"
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            sys.exit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
             sys.exit(-1)
 
         node.value=value1>value2;
@@ -221,8 +245,12 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         value1 = evaluateAST(a.children[0], lineno).value
         value2 = evaluateAST(a.children[1], lineno).value
 
-        if value1 is None or value2 is None:
-            print "Error at line "+str(lineno)+": Used identifier not defined\n"
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            sys.exit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
             sys.exit(-1)
 
         node.value=value1>=value2;
@@ -234,8 +262,12 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         value1 = evaluateAST(a.children[0], lineno).value
         value2 = evaluateAST(a.children[1], lineno).value
 
-        if value1 is None or value2 is None:
-            print "Error at line "+str(lineno)+": Used identifier not defined\n"
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            sys.exit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
             sys.exit(-1)
 
         node.value=value1<=value2;
@@ -247,8 +279,12 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         value1 = evaluateAST(a.children[0], lineno).value
         value2 = evaluateAST(a.children[1], lineno).value
 
-        if value1 is None or value2 is None:
-            print "Error at line "+str(lineno)+": Used identifier not defined\n"
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            sys.exit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
             sys.exit(-1)
 
         node.value=value1==value2;
@@ -260,8 +296,12 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         value1 = evaluateAST(a.children[0], lineno).value
         value2 = evaluateAST(a.children[1], lineno).value
 
-        if value1 is None or value2 is None:
-            print "Error at line "+str(lineno)+": Used identifier not defined\n"
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            sys.exit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
             sys.exit(-1)
 
         node.value=value1!=value2;
@@ -445,7 +485,11 @@ def evaluateAST(a, lineno= "unknown", chained= False):
 
     if(a.type == 'indexassignment'):
         logging.debug("--- index assignment ---")
-        value = evaluateAST(helper.ids[evaluateAST(a.children[1], lineno).value], lineno)[evaluateAST(a.children[2], lineno).value]
+        try:
+            value = evaluateAST(helper.ids[evaluateAST(a.children[1], lineno).value], lineno)[evaluateAST(a.children[2], lineno).value]
+        except IndexError:
+            print "Error at line "+str(lineno)+": List index out of range\n"
+            sys.exit(-1)
         if isinstance(value,list):
             node = ASTNode()
             node.type = "list"
@@ -463,7 +507,11 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         if evaluateAST(a.children[1], lineno).value == len(listValues):
             listValues.append(evaluateAST(a.children[2], lineno).value)
         else:
-            listValues[evaluateAST(a.children[1], lineno).value] = evaluateAST(a.children[2], lineno).value
+            try:
+                listValues[evaluateAST(a.children[1], lineno).value] = evaluateAST(a.children[2], lineno).value
+            except IndexError:
+                print "Error at line "+str(lineno)+": List index out of range\n"
+                sys.exit(-1)
         
         nlistValues = lib.modified_list(listValues)
         node = ASTNode()
@@ -473,6 +521,18 @@ def evaluateAST(a, lineno= "unknown", chained= False):
 
         return
 
+    if(a.type == 'listIndex'):
+        logging.debug("--- list index expression ---")
+
+        listValues = evaluateAST(helper.ids[a.children[0]], lineno)
+        node = ASTNode()
+        node.type = "terminal"
+        try:
+            node.value = listValues[evaluateAST(a.children[1], lineno).value]
+        except IndexError:
+            print "Error at line "+str(lineno)+": List index out of range\n"
+            sys.exit(-1)
+        return node
 
     if(a.type == "addedge"):
            logging.debug("------argEdge-----")
@@ -531,15 +591,23 @@ def evaluateAST(a, lineno= "unknown", chained= False):
                 func.children.append(function[a.children[0]].children[0])    #statements
                 func.children.append(function[a.children[0]].children[1])    #arguments
                 func.children.append(function[a.children[0]].children[2])    #returnargs
+
+                if len(function[a.children[0]].children[1].children) > 1 and a.children[1] == None:
+                    print "Error at line "+str(lineno)+": Mis-match in number of function arguments\n"
+                    sys.exit(-1)
+
+                if a.children[1] != None and len(function[a.children[0]].children[1].children) != len(a.children[1].children):
+                    print "Error at line "+str(lineno)+": Mis-match in number of function arguments\n"
+                    sys.exit(-1)
+
                 if len(a.children) >1:
                     logging.debug("****func_arg****")
                     func.children.append(a.children[1])  #actual arguments passed to function
                 else:
                     func.children.append(None)  #No arguments passed
         except KeyError, e:
-            logging.error("Function not found.")
-            logging.error("Offending function: "+a.children[0])
-            helper.gexit()
+            print "Error at line "+str(lineno)+": Function '"+a.children[0]+"' not found\n"
+            sys.exit(-1)
 
         if isinstance(func.children[0],ASTNode):
             #Packing
@@ -653,7 +721,7 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         logging.debug("*********************")
         logging.debug(evaluateAST(a.children[0], lineno))
         logging.debug("*********************")
-        while (evaluateAST(a.children[0], lineno).value):
+        while (evaluateAST(a.children[0], lineno).value == True):
             evaluateAST(a.children[1], lineno)
 
     if(a.type == "if"):
@@ -661,7 +729,7 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         logging.debug("*********************")
         logging.debug(evaluateAST(a.children[0], lineno))
         logging.debug("*********************")
-        if(evaluateAST(a.children[0], lineno).value):
+        if(evaluateAST(a.children[0], lineno).value == True):
             evaluateAST(a.children[1], lineno)
         elif(len(a.children)>2):
             evaluateAST(a.children[2], lineno)

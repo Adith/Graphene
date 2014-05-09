@@ -36,6 +36,18 @@ tests = {
                 "name" : "Variable Assignment & Print",
                 "severity" : CRITICAL
             },
+    "add_numbers": { 
+                "commands" : ["a=5;","b=5;","c=a+b;","print(c);"],
+                "expect" : "10",
+                "name" : "Addition of Numbers & Print",
+                "severity" : CRITICAL
+            },
+    "print_list_element": { 
+                "commands" : ["a=[1,2,3];","print(a[1]);"],
+                "expect" : "2",
+                "name" : "Printing a List Element",
+                "severity" : CRITICAL
+            },
 }
 
 failed_tests = []

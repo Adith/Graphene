@@ -178,6 +178,18 @@ precedence = (
 	('left', '*', '/'),
 )
 
+def t_TRUE(t):
+    r'True'
+    t.type = RESERVED.get(t.value, "TRUE")
+    logging.debug("----- BOOL: "+t.type+" ------")
+    return t
+
+def t_FALSE(t):
+    r'False'
+    t.type = RESERVED.get(t.value, "FALSE")
+    logging.debug("----- BOOL: "+t.type+" ------")
+    return t
+
 def t_ID(t):
     r'[a-zA-Z\_][a-zA-Z\_0-9]*'
     t.type = RESERVED.get(t.value, "ID")
@@ -594,8 +606,7 @@ def p_node_removal_expression(p):
 
 def p_node_lookup(p):
     '''nodeLookup : idOrAlphanum COLON idOrAlphanum
-                  | COLON idOrAlphanum
-                  | idOrAlphanum'''
+                  | COLON idOrAlphanum'''
     logging.debug("nodeLookup")
     node = ast.ASTNode()
     node.type = "lookupnode"
@@ -696,7 +707,6 @@ def p_assignval(p):
                             | ID '=' SQRBEGIN values SQREND
                             | ID '=' SQRBEGIN SQREND
                             | ID '=' ID SQRBEGIN SQREND
-                            | ID '=' ID SQRBEGIN idOrAlphanum SQREND
                             | ID SQRBEGIN idOrAlphanum SQREND '=' idOrAlphanum
                             | ID SQRBEGIN idOrAlphanum SQREND '=' SQRBEGIN values SQREND'''
 
@@ -945,46 +955,58 @@ def p_expression_group(p):
     '''expression : LPAREN expression RPAREN '''
     p[0] = p[2]
 
-def p_expression_string(p):
-    '''expression : STRING'''
-    logging.debug("p_expressionString")
-    termNode = ast.ASTNode()
-    termNode.type = "terminal"
-    termNode.value = str(p[1][1:-1])
-    p[0] = termNode
-    logging.debug(p[0].type)
+# def p_expression_string(p):
+#     '''expression : STRING'''
+#     logging.debug("p_expressionString")
+#     termNode = ast.ASTNode()
+#     termNode.type = "terminal"
+#     termNode.value = str(p[1][1:-1])
+#     p[0] = termNode
+#     logging.debug(p[0].type)
 
-def p_expression_number(p):
-    '''expression : NUMBER'''
+def p_expression_idOrAlphaNum(p):
+    '''expression : idOrAlphanum'''
     logging.debug("p_expressionNumber")
-    termNode = ast.ASTNode()
-    termNode.type = "terminal"
-    if '.' in p[1]:
-        termNode.value = float(p[1])
-    else:
-        termNode.value = int(p[1])
-    p[0] = termNode
-    logging.debug(p[0].type)
+    # termNode = ast.ASTNode()
+    # termNode.type = "terminal"
+    # if '.' in p[1]:
+    #     termNode.value = float(p[1])
+    # else:
+    #     termNode.value = int(p[1])
+    # p[0] = termNode
+    # logging.debug(p[0].type)
+    p[0] = p[1]
 
-def p_expression_name(p):
-    '''expression : ID'''
-    try:
-        logging.debug("p_expressionId")
-        node = ast.ASTNode()
-        node.type = "id"
-        node.children.append(p[1])
-        p[0]=node
-    except LookupError:
-        logging.error(str("Undefined name '%s'" % p[1]))
-        p[0] = 0
+# def p_expression_name(p):
+#     '''expression : ID'''
+#     try:
+#         logging.debug("p_expressionId")
+#         node = ast.ASTNode()
+#         node.type = "id"
+#         node.children.append(p[1])
+#         p[0]=node
+#     except LookupError:
+#         logging.error(str("Undefined name '%s'" % p[1]))
+#         p[0] = 0
 
-def p_expression_true(p):
-    '''expression : TRUE
-                  | FALSE '''
-    logging.debug("p_expressionBoolean")
+# def p_expression_booleanExp(p):
+#     '''expression : TRUE
+#                   | FALSE '''
+#     logging.debug("p_expressionBoolean")
+#     termNode = ast.ASTNode()
+#     termNode.type = "terminal"
+#     termNode.value = p[1]
+#     p[0] = termNode
+#     logging.debug(p[0].type)
+
+def p_expression_listIndex(p):
+    '''expression : ID SQRBEGIN idOrAlphanum SQREND '''
+    logging.debug("p_expressionListIndex")
     termNode = ast.ASTNode()
-    termNode.type = "terminal"
-    termNode.value = p[1]
+    termNode.type = "listIndex"
+    # termNode.value = p[1]
+    termNode.children.append(p[1])
+    termNode.children.append(p[3])
     p[0] = termNode
     logging.debug(p[0].type)
 
@@ -1085,7 +1107,10 @@ def p_isNumber(p):
 
     termNode = ast.ASTNode()
     termNode.type = "terminal"
-    termNode.value = int(p[1])
+    if '.' in p[1]:
+        termNode.value = float(p[1])
+    else:
+        termNode.value = int(p[1])
     p[0] = termNode
     logging.debug(p[0].type)
 
