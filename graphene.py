@@ -401,6 +401,7 @@ def p_assignlambda(p):
     compoundChild.children.append(p[3].children[0])  #statements
     compoundChild.children.append(p[3].children[1])  #arguments
     compoundChild.children.append(p[3].children[2])  #return
+    compoundChild.children.append(p[1])
     logging.debug('++++++++++++++++++++++++')
     logging.debug(Node.children)
     logging.debug('++++++++++++++++++++++++')
@@ -983,7 +984,6 @@ def p_arg(p):
 
     arglistNode = ast.ASTNode()
     arglistNode.type = "arglist"
-
     arglistNode.children.append(p[1])
 
     if len(p) > 2:

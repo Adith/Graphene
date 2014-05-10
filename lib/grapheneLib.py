@@ -18,6 +18,8 @@ import json
 graphList = {}
 nodeList = {}
 
+chained = False
+
 globalLastNodeIDVal = -1
 globalLastGraphIDVal = -1
 
@@ -80,8 +82,8 @@ class Node(object):
 		for a in inspect.getmembers(child, lambda a:not(inspect.isroutine(a))):
 			if not(a[0].startswith('__') and a[0].endswith('__')):
 				result[a[0]] = a[1]
-			result["__tags__"] = self.__tags__
-			result["__cluster__"] = self.__cluster__
+			result["__tags__"] = child.__tags__
+			result["__cluster__"] = child.__cluster__
 		return result
 
 def node_init(self, *node_data):
@@ -249,6 +251,83 @@ class Graph:
 			if {properties[0]:properties[1]} in node[node.keys()[0]]:
 				results.append(node.keys()[0])
 		print resultss
+
+	def mockFuncCall(self,fname,fargs):
+	    node = ast.ASTNode()
+	    node.type = "funccall"
+	    node.children.append(fname)
+
+	    arglistNode = ast.ASTNode()
+	    arglistNode.type = "arglist"
+	 
+	    for arg in fargs:
+	        node0 = ast.ASTNode()
+	        node0.type = "id"
+	        node0.children.append(arg.get_data()['name'])
+	        arglistNode.children.append(node0)
+
+	    node.children.append(arglistNode)
+	    return node
+
+	def cluster(self,lamda):
+	    global chained
+	    import grapheneHelper as helper
+	    clusters = []
+	    print '<<<<'
+	    for n in nodeList.keys():
+	        print n,nodeList[n].__cluster__
+	    print '>>>>'
+	    nodes = self.getNodes()
+	  
+	    if ast.evaluateAST(self.mockFuncCall(lamda.children[3],[nodes[0],nodes[1]])).value:
+	        clusters.append([nodes[0],nodes[1]])
+	    else:
+	        clusters.append([nodes[0]])
+	        clusters.append([nodes[1]])
+	    
+	    nodes = nodes[2:]
+	    for node in nodes:
+	        cluster_ids = []
+	        index = 0 
+	        for cluster in clusters:
+	            #if lamda(node,cluster[0]):
+	            if ast.evaluateAST(self.mockFuncCall(lamda.children[3],[node,cluster[0]])).value:
+	                cluster.append(node)
+	                cluster_ids.append(index)
+	            index+=1
+	        if len(cluster_ids)==0:
+	            clusters.append([node])
+
+	        # Merge all clusters a node belongs to
+	        if len(cluster_ids)>1:
+	            clusters[cluster_ids[0]] = list(set(clusters[cluster_ids]))
+	            for ind in range(1,len(cluster_ids)):
+	                clusters[ind]=None
+	        clusters = filter(lambda a: a != None, clusters)
+	    #print '+++++',len(clusters),'++++++'
+
+	    index=0
+	    print self.getNodes()
+	    for cluster in clusters:
+	        for node in cluster: 
+	            #print lib.nodeList[node.get_data()['id']].get_data()
+	            nodeList[node.id].__cluster__ = index
+	            node.__cluster__=index
+	        index+=1
+	    #print nodeList
+	    
+	    print '<<<<'
+	    for n in nodeList.keys():
+	        print n,nodeList[n].__cluster__
+	    print '>>>>'
+
+	    print '++++',self,'++++'
+	    for nod in self.getNodes():
+	        print nod.get_data()
+	    
+	    if chained:
+	    	helper.goutput(self)
+	    return self
 
     # # Cluster Nodes
     # def cluster_data(self):

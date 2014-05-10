@@ -95,7 +95,7 @@ def ginput(*args):
         gexit()
     return lib.graphList[len(lib.graphList)-1]
 
-def goutput(graph=None, chained=False):
+def goutput(graph=None, isChained=False):
     # Prints state to D3
     # Note: state = ALL graphs
 
@@ -125,32 +125,83 @@ def goutput(graph=None, chained=False):
     with open('./proc/state.json', 'w') as outfile:
          json.dump({"nodes":nodes, "lastNodeId": len(nodes)-1, "links": graphs}, outfile)
 
-    if not chained:
+    if not isChained:
         gui.output()
     return_val = lib.Graph(outToInLinks(graphs))
+    lib.chained = isChained
     lib.globalLastGraphIDVal = lib.globalLastGraphIDVal - 1
 
     return return_val
 
+def mockFuncCall(fname,fargs):
+    node = ast.ASTNode()
+    node.type = "funccall"
+    node.children.append(fname)
+
+    arglistNode = ast.ASTNode()
+    arglistNode.type = "arglist"
+ 
+    for arg in fargs:
+        node0 = ast.ASTNode()
+        node0.type = "id"
+        node0.children.append(arg.get_data()['name'])
+        arglistNode.children.append(node0)
+
+    node.children.append(arglistNode)
+    return node
+
+
 def gcluster(graph,lamda):
     clusters = []
     #lamda = lambda x,y:x.get_data()['age']==y.get_data()['age']
+    
+    # # Create func call node to call lambda
+    # node = ast.ASTNode()
+    # node.type = "funccall"
+    # node.children.append(lamda.children[3])
+    print '<<<<'
+    for n in lib.nodeList.keys():
+        print n,lib.nodeList[n].__cluster__
+    print '>>>>'
     nodes = graph.getNodes()
-    for n in nodes:
-        print n.get_data()
+    # ######################################
+    # arglistNode = ast.ASTNode()
+    # arglistNode.type = "arglist"
+ 
+    # node0 = ast.ASTNode()
+    # node0.type = "id"
+    # node0.children.append(nodes[0].get_data()['name'])
 
-    if lamda(nodes[0],nodes[1]):
+    # node1 = ast.ASTNode()
+    # node1.type = "id"
+    # node1.children.append(nodes[1].get_data()['name'])
+
+    # arglistNode.children.append(node0)
+    # arglistNode.children.append(node1)
+    # node.children.append(arglistNode)
+
+    # node = mockFuncCall(lamda.children[3],[nodes[0],nodes[1]])
+    # #####################################
+    # print '+++++++++++++++++++++++'
+    # ast.evaluateAST(node)
+    # print '+++++++++++++++++++++++'
+
+    #if lamda(nodes[0],nodes[1]):
+    # x =  ast.evaluateAST(mockFuncCall(lamda.children[3],[nodes[0],nodes[1]]))
+    # print 'x = ',x.value
+    if ast.evaluateAST(mockFuncCall(lamda.children[3],[nodes[0],nodes[1]])).value:
         clusters.append([nodes[0],nodes[1]])
     else:
         clusters.append([nodes[0]])
         clusters.append([nodes[1]])
-    print clusters
+    
     nodes = nodes[2:]
     for node in nodes:
         cluster_ids = []
         index = 0 
         for cluster in clusters:
-            if lamda(node,cluster[0]):
+            #if lamda(node,cluster[0]):
+            if ast.evaluateAST(mockFuncCall(lamda.children[3],[node,cluster[0]])).value:
                 cluster.append(node)
                 cluster_ids.append(index)
             index+=1
@@ -163,14 +214,26 @@ def gcluster(graph,lamda):
             for ind in range(1,len(cluster_ids)):
                 clusters[ind]=None
         clusters = filter(lambda a: a != None, clusters)
-    print len(clusters)
+    #print '+++++',len(clusters),'++++++'
+
     index=0
+    print graph.getNodes()
     for cluster in clusters:
         for node in cluster: 
             #print lib.nodeList[node.get_data()['id']].get_data()
+            lib.nodeList[node.id].__cluster__ = index
             node.__cluster__=index
         index+=1
     #print nodeList
+
+    print '<<<<'
+    for n in lib.nodeList.keys():
+        print n,lib.nodeList[n].__cluster__
+    print '>>>>'
+
+    print '++++',graph,'++++'
+    for nod in graph.getNodes():
+        print nod.get_data()
     return clusters
 
 func_map = {'input' : ginput, 'output' : goutput,  'print' : gprint, 'exit': gexit, 'cluster': gcluster}

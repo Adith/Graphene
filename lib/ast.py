@@ -75,13 +75,13 @@ def evaluateAST(a, chained= False):
         return
 
     if a.type == "lamdaassign":
-        print a.children[0], evaluateAST(a.children[1])
+        #print a.children[0], evaluateAST(a.children[1])
         function[a.children[0]]=a.children[1]
         helper.ids[a.children[0]]=a.children[1]
         #print ("Assigning ",a.children[0]," a value of ",a.children[1])
         #print function
         #print "lambda assigment"
-        return
+        return 
 
     if(a.type == "edgelist"):
         a.value = {}
@@ -446,6 +446,7 @@ def evaluateAST(a, chained= False):
                         func.children.append(None)  #No arguments passed
                 except KeyError, e:
                     logging.debug(helper.ids)
+
                     func.children.append(helper.ids[a.children[0]].children[0])    #statements
                     func.children.append(helper.ids[a.children[0]].children[1])    #arguments
                     func.children.append(helper.ids[a.children[0]].children[2])    #returnargs
