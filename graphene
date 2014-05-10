@@ -6,7 +6,24 @@ if (($# == 0)); then
   python graphene.py
 else
   if [ $1 = "test" ]; then
+    if (($# == 1)); then
       python test/main.py
+    else
+      if (($2 == "-i" )); then
+        # "Scotty! I need.. more.. isolated tests!"
+        python test/main.py -i
+      elif (( $2 == "-t" )); then
+        if (($# != 3)); then
+          usage
+          exit 1
+        fi
+        # "Run this, sesame!"
+        python test/main.py -t $3
+      else
+        usage
+        exit 1
+      fi
+    fi
   fi
 
   while getopts ":f:t:idh" opt; do
@@ -15,19 +32,10 @@ else
         python graphene.py -f $OPTARG
         break
         ;;
-      i)
-        # "Scotty! I need.. more.. isolated tests!"
-        python test/main.py $opt
-        break
-        ;;
+      
       d)
         # "I don't always know what's going on.. But when I do, I don't!"
         python graphene.py -d
-        break
-        ;;
-      t)
-        # "Run this, sesame!"
-        python test/main.py $opt $OPTARG
         break
         ;;
       h)

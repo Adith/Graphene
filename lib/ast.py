@@ -1,4 +1,5 @@
 import logging
+import sys
 
 function=dict()
 
@@ -24,7 +25,7 @@ def printTree(a):
             print type(x)
             printTree(x)
 
-def evaluateAST(a, chained= False):
+def evaluateAST(a, lineno= "unknown", chained= False):
     global ids
     import grapheneLib as lib
     import grapheneHelper as helper
@@ -44,9 +45,9 @@ def evaluateAST(a, chained= False):
     if(isinstance(a,list)):
         ret = []
         for e in a:
-            val = evaluateAST(e)
+            val = evaluateAST(e, lineno)
             if isinstance(val, ASTNode):
-                ret.append(evaluateAST(e).value)
+                ret.append(evaluateAST(e, lineno).value)
             else:
                 ret.append(val)
         return ret
@@ -58,7 +59,7 @@ def evaluateAST(a, chained= False):
         logging.debug('Evaluating a list of statements')
         for e in a.children:
             logging.debug('Evaluating a statement in it...')
-            evaluateAST(e)
+            evaluateAST(e, lineno)
         return a
 
     if(a.type == "terminal"):
@@ -75,7 +76,6 @@ def evaluateAST(a, chained= False):
         return
 
     if a.type == "lamdaassign":
-        #print a.children[0], evaluateAST(a.children[1])
         function[a.children[0]]=a.children[1]
         helper.ids[a.children[0]]=a.children[1]
         #print ("Assigning ",a.children[0]," a value of ",a.children[1])
@@ -93,11 +93,11 @@ def evaluateAST(a, chained= False):
 
         if len(a.children) != 3:
             if a.children[3] != None:
-                for i,e in enumerate(evaluateAST(a.children[3]).value):
+                for i,e in enumerate(evaluateAST(a.children[3], lineno).value):
                     child_edge_list_attr[i] = e
 
         if len(a.children) == 5:
-            for k,v in evaluateAST(a.children[4]).iteritems():
+            for k,v in evaluateAST(a.children[4], lineno).iteritems():
                 if k in a.value.keys():
                     for k1,v1 in v.iteritems():
                         a.value[k][k1] = v1
@@ -110,79 +110,220 @@ def evaluateAST(a, chained= False):
         node.type="terminal"
         node.value = []
         for e in a.children:
-            node.value.append(evaluateAST(e).value)
+            node.value.append(evaluateAST(e, lineno).value)
         return node
 
     if(a.type == "plus"):
         node=ASTNode()
         node.type="terminal"
-        node.value=evaluateAST(a.children[0]).value+evaluateAST(a.children[1]).value;
+
+        value1 = evaluateAST(a.children[0], lineno).value
+        value2 = evaluateAST(a.children[1], lineno).value
+
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            helper.gexit(-1)
+
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
+            helper.gexit(-1)
+
+        try:
+            node.value=value1+value2
+        except TypeError:
+            print "Error at line "+str(lineno)+": Unsupported operand types for '+'\n"
+            helper.gexit(-1)
+
         return node
 
     if(a.type == "minus"):
         node=ASTNode()
         node.type="terminal"
-        node.value=evaluateAST(a.children[0]).value-evaluateAST(a.children[1]).value;
+
+        value1 = evaluateAST(a.children[0], lineno).value
+        value2 = evaluateAST(a.children[1], lineno).value
+
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            helper.gexit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
+            helper.gexit(-1)
+
+        try:
+            node.value=value1-value2
+        except TypeError:
+            print "Error at line "+str(lineno)+": Unsupported operand types for '-'\n"
+            helper.gexit(-1)
+
+        return node
+        
+    if(a.type == "modulo"):
+        node=ASTNode()
+        node.type="terminal"
+        node.value=(evaluateAST(a.children[0]).value)%(evaluateAST(a.children[1]).value);
         return node
 
     if(a.type == "multiply"):
         node=ASTNode()
         node.type="terminal"
-        node.value=evaluateAST(a.children[0]).value*evaluateAST(a.children[1]).value;
+
+        value1 = evaluateAST(a.children[0], lineno).value
+        value2 = evaluateAST(a.children[1], lineno).value
+
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            helper.gexit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
+            helper.gexit(-1)
+
+        try:
+            node.value=value1*value2
+        except TypeError:
+            print "Error at line "+str(lineno)+": Unsupported operand types for '*'\n"
+            helper.gexit(-1)
+
         return node
 
     if(a.type == "divide"):
         node=ASTNode()
         node.type="terminal"
-        node.value=evaluateAST(a.children[0]).value/evaluateAST(a.children[1]).value;
+
+        value1 = evaluateAST(a.children[0], lineno).value
+        value2 = evaluateAST(a.children[1], lineno).value
+
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            helper.gexit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
+            helper.gexit(-1)
+
+        try:
+            node.value=value1/value2
+        except TypeError:
+            print "Error at line "+str(lineno)+": Unsupported operand types for \n"
+            helper.gexit(-1)
+
         return node
 
     if(a.type == "less"):
         node=ASTNode()
         node.type="terminal"
-        node.value=evaluateAST(a.children[0]).value<evaluateAST(a.children[1]).value;
+
+        value1 = evaluateAST(a.children[0], lineno).value
+        value2 = evaluateAST(a.children[1], lineno).value
+
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            helper.gexit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
+            helper.gexit(-1)
+
+        node.value=value1<value2;
         return node
 
     if(a.type == "greater"):
         node=ASTNode()
         node.type="terminal"
-        node.value=evaluateAST(a.children[0]).value>evaluateAST(a.children[1]).value;
+        value1 = evaluateAST(a.children[0], lineno).value
+        value2 = evaluateAST(a.children[1], lineno).value
+
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            helper.gexit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
+            helper.gexit(-1)
+
+        node.value=value1>value2;
         return node
 
     if(a.type == "greaterequal"):
         node=ASTNode()
         node.type="terminal"
-        node.value=evaluateAST(a.children[0]).value>=evaluateAST(a.children[1]).value;
+        value1 = evaluateAST(a.children[0], lineno).value
+        value2 = evaluateAST(a.children[1], lineno).value
+
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            helper.gexit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
+            helper.gexit(-1)
+
+        node.value=value1>=value2;
         return node
 
     if(a.type == "lessequal"):
         node=ASTNode()
         node.type="terminal"
-        node.value=evaluateAST(a.children[0]).value<=evaluateAST(a.children[1]).value;
+        value1 = evaluateAST(a.children[0], lineno).value
+        value2 = evaluateAST(a.children[1], lineno).value
+
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            helper.gexit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
+            helper.gexit(-1)
+
+        node.value=value1<=value2;
         return node
 
     if(a.type == "equal"):
         node=ASTNode()
         node.type="terminal"
-        node.value=evaluateAST(a.children[0]).value==evaluateAST(a.children[1]).value;
+        value1 = evaluateAST(a.children[0], lineno).value
+        value2 = evaluateAST(a.children[1], lineno).value
+
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            helper.gexit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
+            helper.gexit(-1)
+
+        node.value=value1==value2;
         return node
 
     if(a.type == "nequal"):
         node=ASTNode()
         node.type="terminal"
-        node.value=evaluateAST(a.children[0]).value!=evaluateAST(a.children[1]).value;
+        value1 = evaluateAST(a.children[0], lineno).value
+        value2 = evaluateAST(a.children[1], lineno).value
+
+        if value1 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[0].children[0]+"' not found\n"
+            helper.gexit(-1)
+            
+        if value2 is None:
+            print "Error at line "+str(lineno)+": Identifier '"+a.children[1].children[0]+"' not found\n"
+            helper.gexit(-1)
+
+        node.value=value1!=value2;
         return node
 
     if(a.type == "land"):
         node=ASTNode()
         node.type="terminal"
-        node.value=(evaluateAST(a.children[0]).value)and(evaluateAST(a.children[1]).value);
+        node.value=(evaluateAST(a.children[0], lineno).value)and(evaluateAST(a.children[1], lineno).value);
         return node
 
     if(a.type == "lor"):
         node=ASTNode()
         node.type="terminal"
-        node.value=(evaluateAST(a.children[0]).value)or(evaluateAST(a.children[1]).value);
+        node.value=(evaluateAST(a.children[0], lineno).value)or(evaluateAST(a.children[1], lineno).value);
         return node
 
     if(a.type == "assignment"):
@@ -192,9 +333,13 @@ def evaluateAST(a, chained= False):
     
         if (isinstance(a.children[0], ASTNode)):
             for index,i in enumerate(a.children[0].children):
-                helper.ids[a.children[0].children[index].children[0]]= evaluateAST(evaluateAST(a.children[1]).value[index]).value                
+                helper.ids[a.children[0].children[index].children[0]]= evaluateAST(evaluateAST(a.children[1], lineno).value[index], lineno).value                
         else:
-            helper.ids[a.children[0]]= evaluateAST(a.children[1]).value
+            assignmentValue = evaluateAST(a.children[1], lineno).value
+            if assignmentValue is None:
+                print "Error at line "+str(lineno)+": Used identifier not defined\n"
+                helper.gexit(-1)
+            helper.ids[a.children[0]]= assignmentValue
         logging.info('Assigned '+str(helper.ids[a.children[0]])+' to '+str(a.children[0])+' of type '+str(type(helper.ids[a.children[0]])))
         return
 
@@ -219,7 +364,7 @@ def evaluateAST(a, chained= False):
         links =  helper.ids[a.children[0]].get_data()
         shadow = helper.ids[a.children[0]].get_shadow()
 
-        nodes =  evaluateAST(a.children[1]).value
+        nodes =  evaluateAST(a.children[1], lineno).value
         for node in nodes:
             node_id_to_be_removed = node.id
             pop_from_shadow = []
@@ -255,10 +400,10 @@ def evaluateAST(a, chained= False):
             result.value = nodeSet
             logging.debug("------lookupnode-----")
             if len(a.children) == 1:
-                nodeSet.append(evaluateAST(a.children[0]).value)
+                nodeSet.append(evaluateAST(a.children[0], lineno).value)
             else:
                 key =  a.children[0]
-                value = evaluateAST(a.children[1]).value
+                value = evaluateAST(a.children[1], lineno).value
                 if key in ["id","ID"]:
                     nodeSet.append(lib.nodeList[value])
                     return result
@@ -282,9 +427,9 @@ def evaluateAST(a, chained= False):
         try:
             if isinstance(helper.ids[a.children[0]],ASTNode):
                 if len(a.children) <= 2:
-                    node.value = getattr(lib.modified_list(evaluateAST(helper.ids[a.children[0]])),a.children[1])()
+                    node.value = getattr(lib.modified_list(evaluateAST(helper.ids[a.children[0]], lineno)),a.children[1])()
                 else: 
-                    node.value = getattr(helper.ids[a.children[0]].value,a.children[1])(evaluateAST(a.children[2]).value)
+                    node.value = getattr(helper.ids[a.children[0]].value,a.children[1])(evaluateAST(a.children[2], lineno).value)
             else:
                 if len(a.children) <= 2:
                     try:
@@ -293,7 +438,7 @@ def evaluateAST(a, chained= False):
                         node.value = getattr(helper.ids[a.children[0]],a.children[1])()
                     # node.value = getattr(helper.ids[a.children[0]],a.children[1])()
                 else:
-                    node.value = getattr(helper.ids[a.children[0]],a.children[1])(*evaluateAST(a.children[2]).value)
+                    node.value = getattr(helper.ids[a.children[0]],a.children[1])(*evaluateAST(a.children[2], lineno).value)
 
             return node
         except KeyError, e:
@@ -308,15 +453,15 @@ def evaluateAST(a, chained= False):
         listValues = lib.modified_list()
 
         if len(a.children[1].children) == 0:
-            temp = evaluateAST(a.children[1]).value
+            temp = evaluateAST(a.children[1], lineno).value
             for t in temp:
 
                 if t.type == "terminal":
                     listValues.append(t) 
 
-                if t.type == "id" and isinstance(evaluateAST(t).value,ASTNode):
-                    if isinstance(evaluateAST(t).value.value,list):
-                        ttemp = evaluateAST(t).value.value
+                if t.type == "id" and isinstance(evaluateAST(t, lineno).value,ASTNode):
+                    if isinstance(evaluateAST(t, lineno).value.value,list):
+                        ttemp = evaluateAST(t, lineno).value.value
                         innerList = lib.modified_list()
                         for tt in ttemp:
                             innerList.append(tt.value)
@@ -328,7 +473,7 @@ def evaluateAST(a, chained= False):
                 elif t.type == "id":
                     n = ASTNode()
                     n.type = "terminal"
-                    n.value = evaluateAST(t).value
+                    n.value = evaluateAST(t, lineno).value
                     listValues.append(n)
 
         nlistValues = lib.modified_list(listValues)
@@ -343,11 +488,15 @@ def evaluateAST(a, chained= False):
 
     if(a.type == 'list'):
         logging.debug("List value: "+str(a.value))
-        return evaluateAST(a.value)
+        return evaluateAST(a.value, lineno)
 
     if(a.type == 'indexassignment'):
         logging.debug("--- index assignment ---")
-        value = evaluateAST(helper.ids[evaluateAST(a.children[1]).value])[evaluateAST(a.children[2]).value]
+        try:
+            value = evaluateAST(helper.ids[evaluateAST(a.children[1], lineno).value], lineno)[evaluateAST(a.children[2], lineno).value]
+        except IndexError:
+            print "Error at line "+str(lineno)+": List index out of range\n"
+            helper.gexit(-1)
         if isinstance(value,list):
             node = ASTNode()
             node.type = "list"
@@ -361,11 +510,15 @@ def evaluateAST(a, chained= False):
     if(a.type == 'rindexassignment'):
         logging.debug("--- rindex assignment ---")
 
-        listValues = evaluateAST(helper.ids[a.children[0]])
-        if evaluateAST(a.children[1]).value == len(listValues):
-            listValues.append(evaluateAST(a.children[2]).value)
+        listValues = evaluateAST(helper.ids[a.children[0]], lineno)
+        if evaluateAST(a.children[1], lineno).value == len(listValues):
+            listValues.append(evaluateAST(a.children[2], lineno).value)
         else:
-            listValues[evaluateAST(a.children[1]).value] = evaluateAST(a.children[2]).value
+            try:
+                listValues[evaluateAST(a.children[1], lineno).value] = evaluateAST(a.children[2], lineno).value
+            except IndexError:
+                print "Error at line "+str(lineno)+": List index out of range\n"
+                helper.gexit(-1)
         
         nlistValues = lib.modified_list(listValues)
         node = ASTNode()
@@ -375,6 +528,18 @@ def evaluateAST(a, chained= False):
 
         return
 
+    if(a.type == 'listIndex'):
+        logging.debug("--- list index expression ---")
+
+        listValues = evaluateAST(helper.ids[a.children[0]], lineno)
+        node = ASTNode()
+        node.type = "terminal"
+        try:
+            node.value = listValues[evaluateAST(a.children[1], lineno).value]
+        except IndexError:
+            print "Error at line "+str(lineno)+": List index out of range\n"
+            helper.gexit(-1)
+        return node
 
     if(a.type == "addedge"):
            logging.debug("------argEdge-----")
@@ -389,9 +554,9 @@ def evaluateAST(a, chained= False):
     if(a.type == "callchain"):
         logging.debug('-----eval: callchain----')
         if a.chain_next == None:
-            ret = evaluateAST(a.children[0])
+            ret = evaluateAST(a.children[0], lineno)
         else:
-            ret = evaluateAST(a.children[0], True)
+            ret = evaluateAST(a.children[0], lineno, True)
             node = ASTNode()
             node.type = "member_funccall"
             helper.ids["__chaining_buffer__"] = ret.value
@@ -401,7 +566,7 @@ def evaluateAST(a, chained= False):
             if a.chain_next.children[1] != None:
                 node.children.append(a.chain_next.children[1])
             try:
-                return evaluateAST(node)
+                return evaluateAST(node, lineno)
             except Exception, e:
                 raise                        
         return ret
@@ -433,10 +598,28 @@ def evaluateAST(a, chained= False):
             except KeyError:
                 # User-defined
                 logging.debug("****userdefined****")
+
                 try:
                     func.children.append(function[a.children[0]].children[0])    #statements
                     func.children.append(function[a.children[0]].children[1])    #arguments
                     func.children.append(function[a.children[0]].children[2])    #returnargs
+
+                    if len(function[a.children[0]].children[1].children) > 0 and function[a.children[0]].children[1].children[0] != None and a.children[1] == None:
+                        print "Error at line "+str(lineno)+": Mis-match in number of function arguments\n"
+                        helper.gexit(-1)
+
+                    if len(function[a.children[0]].children[1].children) > 1 and a.children[1] == None:
+                        print "Error at line "+str(lineno)+": Mis-match in number of function arguments\n"
+                        helper.gexit(-1)
+    
+                    if a.children[1] != None and len(function[a.children[0]].children[1].children) > len(a.children[1].children):
+                        print "Error at line "+str(lineno)+": Mis-match in number of function arguments\n"
+                        helper.gexit(-1)
+    
+                    if a.children[1] != None and len(function[a.children[0]].children[1].children) < len(a.children[1].children):
+                        print "Warning - Mis-match in number of function arguments on line "+str(lineno)
+    
+
                     if len(a.children) >1:
                         logging.debug("****func_arg****")
                         #logging.debug((a.children[1].children[0].type))
@@ -447,21 +630,24 @@ def evaluateAST(a, chained= False):
                 except KeyError, e:
                     logging.debug(helper.ids)
 
-                    func.children.append(helper.ids[a.children[0]].children[0])    #statements
-                    func.children.append(helper.ids[a.children[0]].children[1])    #arguments
-                    func.children.append(helper.ids[a.children[0]].children[2])    #returnargs
-                    if len(a.children) >1:
-                        logging.debug("****func_arg****")
-                        #logging.debug((a.children[1].children[0].type))
-                        #logging.debug((a.children[1].children[1].type))
-                        func.children.append(a.children[1])  #actual arguments passed to function
-                        logging.debug(a.children[1].children[0].children)
+                    try:
+                        func.children.append(helper.ids[a.children[0]].children[0])    #statements
+                        func.children.append(helper.ids[a.children[0]].children[1])    #arguments
+                        func.children.append(helper.ids[a.children[0]].children[2])    #returnargs
+                        if len(a.children) >1:
+                            logging.debug("****func_arg****")
+                            #logging.debug((a.children[1].children[0].type))
+                            #logging.debug((a.children[1].children[1].type))
+                            func.children.append(a.children[1])  #actual arguments passed to function
+                            logging.debug(a.children[1].children[0].children)
+                    except Exception,e:
+                        print "Error at line "+str(lineno)+": Function '"+a.children[0]+"' not found\n"
+                        helper.gexit()
+
                     #logging.debug("LAMBDA!!!"+helper.ids[a.children[0]])
         except KeyError, e:
-            logging.debug("Function not found."+a.children[0])
-            logging.debug(helper.ids)
-            logging.error("Offending function: "+a.children[0])
-            helper.gexit()
+            print "Error at line "+str(lineno)+": Function '"+a.children[0]+"' not found\n"
+            helper.gexit(-1)
 
         if isinstance(func.children[0],ASTNode):
             #Packing
@@ -474,26 +660,26 @@ def evaluateAST(a, chained= False):
                 numArgs = 0
             
             for i in range(0,numArgs):
-                helper.ids[func.children[1].children[i]]= evaluateAST(func.children[3]).value[i]
+                helper.ids[func.children[1].children[i]]= evaluateAST(func.children[3], lineno).value[i]
                 logging.info('Assigned '+str(func.children[1].children[i])+' to '+str(helper.ids[func.children[1].children[i]])+' inside funccall')
             logging.debug("MODIFIED scope: Before call:",helper.ids)
-            evaluateAST(func.children[0])
+            evaluateAST(func.children[0], lineno)
             
             node.value = []
             if len(func.children[2].children)!=0:
                 if func.children[2].children[0] != None:       
                     if len(func.children[2].children) ==1:
-                        node.value = evaluateAST(func.children[2].children[0]).value
+                        node.value = evaluateAST(func.children[2].children[0], lineno).value
                     else:
                         for ret in func.children[2].children:
-                            node.value.append(evaluateAST(ret))
+                            node.value.append(evaluateAST(ret, lineno))
                 #Unpacking
             # helper.scope_out() #Refer above at scope_in() call
             #End unpacking
             logging.debug("MODIFIED scope: After call:",helper.ids)
         else:
             if func.children[1] != None:
-                x = evaluateAST(func.children[1]).value
+                x = evaluateAST(func.children[1], lineno).value
                 node.value=func.children[0](*x)
             else:
                 if func.children[0] == helper.goutput and func.children[2] == True:
@@ -513,16 +699,16 @@ def evaluateAST(a, chained= False):
         logging.debug('compound statement')
         if a.children[0] != None:
             # helper.scope_in()
-            evaluateAST(a.children[0])
+            evaluateAST(a.children[0], lineno)
             # helper.scope_out()
 
     if (a.type == 'funccompoundstatement'):
         logging.debug('function compound statement')
         if a.children[0] != None:
-            evaluateAST(a.children[0])
+            evaluateAST(a.children[0], lineno)
 
     if(a.type == "sequence"):
-        return evaluateAST(a.children[0])
+        return evaluateAST(a.children[0], lineno)
 
     if(a.type == "id"):
         node=ASTNode()
@@ -534,7 +720,7 @@ def evaluateAST(a, chained= False):
                 node.value=helper.ids[a.children[0]]
         except KeyError, e:
             logging.critical("Unknown variable: '"+str(a.children[0])+"'")
-            sys.exit(-1)
+            helper.gexit(-1)
         return node
 
     if(a.type == "node-dec"):
@@ -547,19 +733,19 @@ def evaluateAST(a, chained= False):
     if(a.type == "graph-dec"):
         logging.debug('-----eval: graph-dec----')
 
-        new_graph = lib.Graph(evaluateAST(a.children[3]), evaluateAST(a.children[1]), evaluateAST(a.children[2]))
+        new_graph = lib.Graph(evaluateAST(a.children[3], lineno), evaluateAST(a.children[1], lineno), evaluateAST(a.children[2], lineno))
         lib.graphList[lib.globalLastGraphIDVal] = new_graph
 
         for source, destinations in new_graph.get_data().iteritems():
             source = int(source)
             if source not in lib.nodeList.keys():
                 logging.error("Source Node #"+str(source)+" not found.")
-                sys.exit(0)
+                helper.gexit(-1)
             for destination, properties in destinations.iteritems():
                 destination = int(destination)
                 if destination not in lib.nodeList.keys():
                     logging.error("Destination Node #"+str(destination)+"not found.")
-                    sys.exit(0)
+                    helper.gexit(-1)
 
         helper.ids[a.children[0].value] = new_graph
 
@@ -585,56 +771,61 @@ def evaluateAST(a, chained= False):
 
     #while loop
     if(a.type == 'while'):
-        #TODO - change condition to True/False --Pooja
         logging.debug("evaluateAST of while")
         logging.debug("*********************")
-        logging.debug(evaluateAST(a.children[0]))
+        logging.debug(evaluateAST(a.children[0], lineno))
         logging.debug("*********************")
-        while (evaluateAST(a.children[0]).value != 0):
-            evaluateAST(a.children[1])
+        while (evaluateAST(a.children[0], lineno).value == True):
+            evaluateAST(a.children[1], lineno)
 
     if(a.type == "if"):
         logging.debug("evaluateAST of if")
         logging.debug("*********************")
-        logging.debug(evaluateAST(a.children[0]))
+        logging.debug(evaluateAST(a.children[0], lineno))
         logging.debug("*********************")
-        if(evaluateAST(a.children[0]).value):
-            evaluateAST(a.children[1])
+        if(evaluateAST(a.children[0], lineno).value == True):
+            evaluateAST(a.children[1], lineno)
         elif(len(a.children)>2):
-            evaluateAST(a.children[2])
+            evaluateAST(a.children[2], lineno)
 
     if(a.type == 'for'):
         logging.debug("evaluateAST of for")
         logging.debug("*********************")
-        logging.debug(evaluateAST(a.children[0]))
+        logging.debug(evaluateAST(a.children[0], lineno))
         logging.debug("*********************")
 
-        evaluateAST(a.children[0]); # Initialization
+        evaluateAST(a.children[0], lineno); # Initialization
 
-        while (evaluateAST(a.children[1]).value != 0): # Check condition
-            evaluateAST(a.children[3]) # Evaluate statement
-            evaluateAST(a.children[2]) # Update loop statement
+        while (evaluateAST(a.children[1], lineno).value != 0): # Check condition
+            evaluateAST(a.children[3], lineno) # Evaluate statement
+            evaluateAST(a.children[2], lineno) # Update loop statement
             
     if(a.type == 'foreach'):
         logging.debug("evaluateAST of foreach")
         logging.debug("*********************")
-        logging.debug(evaluateAST(a.children[0]))
+        logging.debug(evaluateAST(a.children[0], lineno))
         logging.debug("*********************")
         iterVar = 0
         
         # helper.scope_in()
         # logging.debug("scope in")
-        if(a.children[1].type == 'id'):
-            iteratingList = evaluateAST(helper.ids[a.children[1]])
+        logging.debug(a.children) 
+
+        if(isinstance(a.children[1],basestring)):
+            iteratingList = helper.ids[a.children[1]]
+
         else:
-            iteratingList = evaluateAST(a.children[1])
+            iteratingList = evaluateAST(a.children[1], lineno)
             if(isinstance(iteratingList, ASTNode)):
                 iteratingList = iteratingList.value
-
+        
+        while(isinstance(iteratingList,ASTNode)):
+            iteratingList = evaluateAST(iteratingList)
+        
         while iterVar < len(iteratingList):
             helper.ids[a.children[0]] = iteratingList[iterVar] #Update iterVariable
             logging.debug('Evaluating foreach statement')
-            evaluateAST(a.children[2]) #evaluate child compoundstatement
+            evaluateAST(a.children[2], lineno) #evaluate child compoundstatement
             iterVar += 1 #increment index of iterVar
 
         # while iterVar < len(evaluateAST(helper.ids[a.children[1]])):

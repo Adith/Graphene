@@ -9,8 +9,8 @@ import sys
 
 ids=lib.modified_dict()
 
-def gexit():
-    sys.exit(0)
+def gexit(errorCode = 0):
+    sys.exit(errorCode)
 
 def gprint(*node):
     logging.debug('******print******')
