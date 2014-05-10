@@ -124,6 +124,12 @@ def evaluateAST(a, chained= False):
         node.type="terminal"
         node.value=evaluateAST(a.children[0]).value-evaluateAST(a.children[1]).value;
         return node
+        
+    if(a.type == "modulo"):
+        node=ASTNode()
+        node.type="terminal"
+        node.value=(evaluateAST(a.children[0]).value)%(evaluateAST(a.children[1]).value);
+        return node
 
     if(a.type == "multiply"):
         node=ASTNode()

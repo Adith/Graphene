@@ -46,7 +46,7 @@ if len(sys.argv) > 1:
 NumberTypes = (types.IntType, types.LongType, types.FloatType, types.ComplexType)
 
 tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'LAMDA', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'FOREACH', 'IN', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR', 'ADD_STORE', 'REMOVE_STORE')
-literals = [';', '=', '+', '-', '*', '/']
+literals = [';', '=', '+', '-', '*', '/', '%']
 t_GR = r'\>'
 t_LS = r'\<'
 
@@ -745,6 +745,7 @@ def p_valueList(p):
 def p_expression_binop(p):
     '''expression : expression '+' expression
                   | expression '-' expression
+                  | expression '%' expression
                   | expression '*' expression
                   | expression '/' expression'''
 
@@ -766,7 +767,15 @@ def p_expression_binop(p):
         node.children.append(p[1])
         node.children.append(p[3])
         p[0] = node
-
+    
+    elif p[2] == '%' :
+        logging.debug('---modulo---')
+        node = ast.ASTNode()
+        node.type = "modulo"
+        node.children.append(p[1])
+        node.children.append(p[3])
+        p[0] = node
+    
     elif p[2] == '*' :
         logging.debug('---multiply---')
         node = ast.ASTNode()
