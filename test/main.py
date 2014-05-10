@@ -163,6 +163,12 @@ tests = {
                 "name" : "Test Warning - Function Argument Mismatch",
                 "severity" : CRITICAL
             },
+    "node_1": { 
+                "commands" : ["Student has name,age;","a = Student ('a',1);","print(a);"],
+                "expect" : "Node has\n\tname : a\n\tage : 1\n",
+                "name" : "Node Type Declaration, Node Assignment & Print",
+                "severity" : CRITICAL
+            },
 }
 
 failed_tests = []
