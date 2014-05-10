@@ -623,7 +623,7 @@ def evaluateAST(a, chained= False):
         
         # helper.scope_in()
         # logging.debug("scope in")
-        logging.debug(a.children)
+        logging.debug(a.children) 
 
         if(isinstance(a.children[1],basestring)):
             iteratingList = helper.ids[a.children[1]]
