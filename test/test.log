@@ -1,3 +1,5 @@
-{"ran": 3, "failed": 0, "failed_tests": [], "time": "Fri May  9 05:39:57 2014"}
-{"ran": 3, "failed": 1, "failed_tests": ["add_numbers"], "time": "Fri May  9 05:41:05 2014"}
-{"ran": 4, "failed": 0, "failed_tests": [], "time": "Fri May  9 05:42:40 2014"}
+{"ran": 21, "failed": 1, "failed_tests": ["error_4"], "time": "Sat May 10 01:56:10 2014"}
+{"ran": 21, "failed": 1, "failed_tests": ["error_4"], "time": "Sat May 10 01:57:48 2014"}
+{"ran": 21, "failed": 0, "failed_tests": [], "time": "Sat May 10 01:58:34 2014"}
+{"ran": 22, "failed": 0, "failed_tests": [], "time": "Sat May 10 01:59:23 2014"}
+{"ran": 23, "failed": 0, "failed_tests": [], "time": "Sat May 10 02:08:16 2014"}

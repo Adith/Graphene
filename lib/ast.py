@@ -130,7 +130,7 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         try:
             node.value=value1+value2
         except TypeError:
-            print "Error at line "+str(lineno)+": Unsupported operand types\n"
+            print "Error at line "+str(lineno)+": Unsupported operand types for '+'\n"
             sys.exit(-1)
 
         return node
@@ -153,7 +153,7 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         try:
             node.value=value1-value2
         except TypeError:
-            print "Error at line "+str(lineno)+": Unsupported operand types\n"
+            print "Error at line "+str(lineno)+": Unsupported operand types for '-'\n"
             sys.exit(-1)
 
         return node
@@ -176,7 +176,7 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         try:
             node.value=value1*value2
         except TypeError:
-            print "Error at line "+str(lineno)+": Unsupported operand types\n"
+            print "Error at line "+str(lineno)+": Unsupported operand types for '*'\n"
             sys.exit(-1)
 
         return node
@@ -199,7 +199,7 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         try:
             node.value=value1/value2
         except TypeError:
-            print "Error at line "+str(lineno)+": Unsupported operand types\n"
+            print "Error at line "+str(lineno)+": Unsupported operand types for \n"
             sys.exit(-1)
 
         return node
@@ -592,13 +592,20 @@ def evaluateAST(a, lineno= "unknown", chained= False):
                 func.children.append(function[a.children[0]].children[1])    #arguments
                 func.children.append(function[a.children[0]].children[2])    #returnargs
 
+                if len(function[a.children[0]].children[1].children) > 0 and function[a.children[0]].children[1].children[0] != None and a.children[1] == None:
+                    print "Error at line "+str(lineno)+": Mis-match in number of function arguments\n"
+                    sys.exit(-1)
+
                 if len(function[a.children[0]].children[1].children) > 1 and a.children[1] == None:
                     print "Error at line "+str(lineno)+": Mis-match in number of function arguments\n"
                     sys.exit(-1)
 
-                if a.children[1] != None and len(function[a.children[0]].children[1].children) != len(a.children[1].children):
+                if a.children[1] != None and len(function[a.children[0]].children[1].children) > len(a.children[1].children):
                     print "Error at line "+str(lineno)+": Mis-match in number of function arguments\n"
                     sys.exit(-1)
+
+                if a.children[1] != None and len(function[a.children[0]].children[1].children) < len(a.children[1].children):
+                    print "Warning - Mis-match in number of function arguments on line "+str(lineno)
 
                 if len(a.children) >1:
                     logging.debug("****func_arg****")

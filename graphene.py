@@ -576,8 +576,8 @@ def p_statementlist(p):
 
 def p_statement(p):
     '''statement : expressionstatement
-                 | iterationstatement
-				 | selectionstatement'''
+                 | iterationstatement ';'
+				 | selectionstatement ';' '''
 
     logging.debug("statement")
 
@@ -1064,8 +1064,8 @@ def p_call(p):
     p[0] = node
 
 def p_callarglist(p):
-    '''callarglist : expression COMMA arglist
-               | expression'''
+    '''callarglist : expression COMMA callarglist
+                   | expression'''
 
     logging.debug("callarglist")
 
@@ -1075,7 +1075,7 @@ def p_callarglist(p):
     arglistNode.children.append(p[1])
 
     if len(p) > 2:
-        arglistNode.children.append(p[3].children[0])
+        arglistNode.children.extend(p[3].children)
 
     p[0] = arglistNode
     logging.debug(p[0].type)
@@ -1092,7 +1092,7 @@ def p_arg(p):
     arglistNode.children.append(p[1])
 
     if len(p) > 2:
-        arglistNode.children.append(p[3].children[0])
+        arglistNode.children.extend(p[3].children)
 
     p[0] = arglistNode
     logging.debug(p[0].type)
