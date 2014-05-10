@@ -99,6 +99,7 @@ def node_init(self, *node_data):
 	self.id = globalLastNodeIDVal + 1
 	globalLastNodeIDVal = globalLastNodeIDVal + 1
 
+
 class Graph:
 	''' Internal representation of a graph object '''
 	id = -1
@@ -232,6 +233,22 @@ class Graph:
 			clusters.append(cluster_instance)
 
 		return clusters
+
+	def edgeHasProperty(self, source, target, property):
+		try:
+		 if self.edgeList[source.id][target.id][property[0]] == property[1] :
+			return True
+		 else:
+			return False
+		except KeyError:
+			return False
+
+	def findconnections(self,root,properties):
+		results = []
+		for node in edgelist[root]:
+			if {properties[0]:properties[1]} in node[node.keys()[0]]:
+				results.append(node.keys()[0])
+		print resultss
 
     # # Cluster Nodes
     # def cluster_data(self):

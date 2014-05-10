@@ -9,8 +9,8 @@ import sys
 
 ids=lib.modified_dict()
 
-def gexit():
-    sys.exit(0)
+def gexit(errorCode = 0):
+    sys.exit(errorCode)
 
 def gprint(*node):
     logging.debug('******print******')
@@ -132,7 +132,48 @@ def goutput(graph=None, chained=False):
 
     return return_val
 
-func_map = {'input' : ginput, 'output' : goutput,  'print' : gprint, 'exit': gexit}
+def gcluster(graph,lamda):
+    clusters = []
+    #lamda = lambda x,y:x.get_data()['age']==y.get_data()['age']
+    nodes = graph.getNodes()
+    for n in nodes:
+        print n.get_data()
+
+    if lamda(nodes[0],nodes[1]):
+        clusters.append([nodes[0],nodes[1]])
+    else:
+        clusters.append([nodes[0]])
+        clusters.append([nodes[1]])
+    print clusters
+    nodes = nodes[2:]
+    for node in nodes:
+        cluster_ids = []
+        index = 0 
+        for cluster in clusters:
+            if lamda(node,cluster[0]):
+                cluster.append(node)
+                cluster_ids.append(index)
+            index+=1
+        if len(cluster_ids)==0:
+            clusters.append([node])
+
+        # Merge all clusters a node belongs to
+        if len(cluster_ids)>1:
+            clusters[cluster_ids[0]] = list(set(clusters[cluster_ids]))
+            for ind in range(1,len(cluster_ids)):
+                clusters[ind]=None
+        clusters = filter(lambda a: a != None, clusters)
+    print len(clusters)
+    index=0
+    for cluster in clusters:
+        for node in cluster: 
+            #print lib.nodeList[node.get_data()['id']].get_data()
+            node.__cluster__=index
+        index+=1
+    #print nodeList
+    return clusters
+
+func_map = {'input' : ginput, 'output' : goutput,  'print' : gprint, 'exit': gexit, 'cluster': gcluster}
 
 
 def scope_in():

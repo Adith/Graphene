@@ -88,12 +88,14 @@ errorDict = {'ID':'id',
     '=':'\'=\'',
     ';':'\';\'',
     '+': '\'+\'',
-    '*': '\'+\'',
+    '*': '\'*\'',
     '-': '\'-\'',
-    '/': '\'/\''}
+    '/': '\'/\'',
+    '%': '\'%\''}
 
 tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'LAMDA', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'FOREACH', 'IN', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR', 'ADD_STORE', 'REMOVE_STORE','TRUE','FALSE')
-literals = [';', '=', '+', '-', '*', '/']
+literals = [';', '=', '+', '-', '*', '/', '%']
+
 t_GR = r'\>'
 t_LS = r'\<'
 
@@ -168,13 +170,14 @@ t_NEW = r'new'
 
 t_CONNECTOR = r'<?->'
 
-t_GRAPHTYPE = r'(d|u){1}'
+#t_GRAPHTYPE = r'(d|u){1}'
 
 precedence = (
 	('left','LOGAND','LOGOR'),
 	('left', 'EQUAL', 'NEQUAL'),
 	('left','LS','GR','GRTEQ', 'LESSEQ'),
 	('left', '+', '-'),
+    ('left', '%'),
 	('left', '*', '/'),
 )
 
@@ -188,6 +191,11 @@ def t_FALSE(t):
     r'False'
     t.type = RESERVED.get(t.value, "FALSE")
     logging.debug("----- BOOL: "+t.type+" ------")
+
+def t_GRAPHTYPE(t):
+    r'(d|u){1}{'
+    t.type = RESERVED.get(t.value, "GRAPHTYPE")
+    logging.debug("----- TOKEN: GRAPHTYPE - "+t.type+" ------")
     return t
 
 def t_ID(t):
@@ -244,45 +252,7 @@ def p_error(p):
     # print 'Current stack:', cvars['symstack']
     sys.exit()
 
-def cluster(graph,lamda):
-    clusters = []
-    lamda = lambda x,y:x.get_data()['age']==y.get_data()['age']
-    nodes = graph.getNodes()
-    for n in nodes:
-        print n.get_data()
-    if lamda(nodes[0],nodes[1]):
-        clusters.append([nodes[0],nodes[1]])
-    else:
-        clusters.append([nodes[0]])
-        clusters.append([nodes[1]])
-    print clusters
-    nodes = nodes[2:]
-    for node in nodes:
-        cluster_ids = []
-        index = 0 
-        for cluster in clusters:
-            if lamda(node,cluster[0]):
-                cluster.append(node)
-                cluster_ids.append(index)
-            index+=1
-        if len(cluster_ids)==0:
-            clusters.append([node])
 
-        # Merge all clusters a node belongs to
-        if len(cluster_ids)>1:
-            clusters[cluster_ids[0]] = list(set(clusters[cluster_ids]))
-            for ind in range(1,len(cluster_ids)):
-                clusters[ind]=None
-        clusters = filter(lambda a: a != None, clusters)
-    print len(clusters)
-    index=0
-    for cluster in clusters:
-        for node in cluster: 
-            #print lib.nodeList[node.get_data()['id']].get_data()
-            node.__cluster__=index
-        index+=1
-    #print nodeList
-    return clusters
 
 
 lexer = lex.lex();
@@ -365,19 +335,19 @@ def p_graph(p):
     gtype = ast.ASTNode()
     gtype.type = "terminal"
     gtype.value = p[4]
-    edges = p[6]
+    edges = p[5]
 
     key = ast.ASTNode()
     key.type = "terminal"
     key.value = "id"
 
-    if(len(p) == 10):
-        key.value = p[9]
+    if(len(p) == 9):
+        key.value = p[8]
 
     node.children.append(gid)
     node.children.append(gtype)
     node.children.append(key)
-    node.children.append(p[6])
+    node.children.append(edges)
 
     p[0] = node
 
@@ -475,8 +445,8 @@ def p_lambda(p):
     logging.debug("In lambda")
     termNode = ast.ASTNode()
     termNode.type = "lambda"
-    termNode.children.append(p[2])
     termNode.children.append(p[4])
+    termNode.children.append(p[2])
     termNode.children.append(p[6])
     p[0] = termNode
 
@@ -499,12 +469,12 @@ def p_assignlambda(p):
 
     compoundChild = ast.ASTNode()
     compoundChild.type = 'lamda-signature'
-    compoundChild.children.append(p[3].children[1])  #statements
-    compoundChild.children.append(p[3].children[0])  #arguments
+    compoundChild.children.append(p[3].children[0])  #statements
+    compoundChild.children.append(p[3].children[1])  #arguments
     compoundChild.children.append(p[3].children[2])  #return
-    print '++++++++++++++++++++++++'
-    print Node.children
-    print '++++++++++++++++++++++++'
+    logging.debug('++++++++++++++++++++++++')
+    logging.debug(Node.children)
+    logging.debug('++++++++++++++++++++++++')
     node.children.append(compoundChild)
 
     p[0]=node 
@@ -688,7 +658,8 @@ def p_expression(p):
     '''completeexpression : callchain
                   | assignmentexpression
                   | edgeaddition
-                  | noderemoval'''
+                  | noderemoval
+                  | edgehasproperty'''
 
     logging.debug("expr")
     p[0] = p[1]
@@ -699,6 +670,26 @@ def p_expression(p):
 ##def p_assignmentexpression(p):
 ##    '''assignmentexpression : Type ID '=' Type '.' new '(' ')'
 ##                            | Type ID '=' assignmentexpression'''
+
+def p_edgehasproperty(p):
+    '''edgehasproperty : ID DOT SQRBEGIN STRING '=' idOrAlphanum SQREND'''
+    node = ast.ASTNode()
+    node.type = "query"
+    node.children.append(p[1])
+    node.children.append(p[4])
+    node.children.append(p[6])
+    p[0] = node
+
+def p_nodeproperty(p):
+    '''expression : ID DOT SQRBEGIN STRING SQREND'''
+    logging.debug('++++++++++++++++++')
+    logging.debug(p[4])
+    logging.debug('++++++++++++++++++')
+    node = ast.ASTNode()
+    node.type = "node_prop"
+    node.children.append(p[1])
+    node.children.append(p[4])
+    p[0] = node
 
 def p_assignval(p):
     '''assignmentexpression : ID '=' expression
@@ -811,6 +802,7 @@ def p_valueList(p):
 def p_expression_binop(p):
     '''expression : expression '+' expression
                   | expression '-' expression
+                  | expression '%' expression
                   | expression '*' expression
                   | expression '/' expression'''
 
@@ -832,7 +824,15 @@ def p_expression_binop(p):
         node.children.append(p[1])
         node.children.append(p[3])
         p[0] = node
-
+    
+    elif p[2] == '%' :
+        logging.debug('---modulo---')
+        node = ast.ASTNode()
+        node.type = "modulo"
+        node.children.append(p[1])
+        node.children.append(p[3])
+        p[0] = node
+    
     elif p[2] == '*' :
         logging.debug('---multiply---')
         node = ast.ASTNode()

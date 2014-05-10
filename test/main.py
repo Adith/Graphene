@@ -73,6 +73,12 @@ tests = {
                 "name" : "Checking WHILE Loop",
                 "severity" : CRITICAL
             },
+    "foreach_loop": { 
+                "commands" : ["Student has name,age;","a = Student('aa',1);","b = Student('b',1);","c = Student('c',1);","Graph g has d{ 0->1,1->2};","foreach(x in g.getNodes()){print(x);};"],
+                "expect" : "Node has\n\tname : aa\n\tage : 1\nNode has\n\tname : b\n\tage : 1\nNode has\n\tname : c\n\tage : 1\n",
+                "name" : "Checking FOREACH Loop by Looping through Nodes of a Graph and Printing",
+                "severity" : CRITICAL
+            },
     "function_1": { 
                 "commands" : ["def() => func{print(\"hi\");} => ();","func();"],
                 "expect" : "hi\n",
@@ -167,6 +173,18 @@ tests = {
                 "commands" : ["Student has name,age;","a = Student ('a',1);","print(a);"],
                 "expect" : "Node has\n\tname : a\n\tage : 1\n",
                 "name" : "Node Type Declaration, Node Assignment & Print",
+                "severity" : CRITICAL
+            },
+    "lambda_1": { 
+                "commands" : ["x = lambda(a):{d=a+1;}=>(d);"," y=x(3);","print(y);"],
+                "expect" : "4\n",
+                "name" : "Lambda Sanity",
+                "severity" : CRITICAL
+            },
+    "lambda_2": { 
+                "commands" : ["x = lambda(a):{d=a+1;}=>(d);","def (l,p)=>apply{z=l(p);}=>(z);","y=apply(x,7);","print(y);"],
+                "expect" : "8\n",
+                "name" : "Lambda as Parameter to Function",
                 "severity" : CRITICAL
             },
 }
