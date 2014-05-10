@@ -565,6 +565,20 @@ def evaluateAST(a, chained= False):
         # new_graph.print_data()
         return
 
+    if(a.type == "query"):
+        #print a.children[2].value, evaluateAST(a.children[2])
+        if str(helper.ids[a.children[0]].get_data()[str(evaluateAST(a.children[1])[1:-1])])==str(evaluateAST(a.children[2]).value):
+           return True
+        else:
+            return False
+
+    if(a.type == "node_prop"):
+        #print a.children, helper.ids, helper.ids[a.children[0]].get_data(), str(evaluateAST(a.children[1])[1:-1])
+        term = ASTNode()
+        term.type = "terminal"
+        term.value = helper.ids[a.children[0]].get_data()[str(evaluateAST(a.children[1])[1:-1])]
+        return term
+
     if(a.type == "function-dec"):
         function[a.children[0]]=a.children[1]
 
