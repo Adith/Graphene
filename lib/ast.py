@@ -609,13 +609,18 @@ def evaluateAST(a, chained= False):
         
         # helper.scope_in()
         # logging.debug("scope in")
-        if(a.children[1].type == 'id'):
-            iteratingList = evaluateAST(helper.ids[a.children[1]])
+        logging.debug(a.children)
+
+        if(isinstance(a.children[1],basestring)):
+            iteratingList = helper.ids[a.children[1]]
         else:
             iteratingList = evaluateAST(a.children[1])
             if(isinstance(iteratingList, ASTNode)):
                 iteratingList = iteratingList.value
-
+        
+        while(isinstance(iteratingList,ASTNode)):
+            iteratingList = evaluateAST(iteratingList)
+        
         while iterVar < len(iteratingList):
             helper.ids[a.children[0]] = iteratingList[iterVar] #Update iterVariable
             logging.debug('Evaluating foreach statement')
