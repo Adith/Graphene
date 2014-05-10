@@ -56,7 +56,8 @@ def renderHelper(direction):
     if os.name == 'posix':
         # Works best on Chrome.
         try:
-            webbrowser.get("open -a /Applications/Google\ Chrome.app %s").open(url)
+            # webbrowser.get("open -a /Applications/Google\ Chrome.app %s").open(url)
+            webbrowser.get("firefox").open(url)
         except Exception, e:
             webbrowser.get().open(url)
     elif os.name == 'nt':
@@ -86,7 +87,7 @@ def output():
     thread = renderHelper("output")
 
     # HACK-O-RAMA! Find a better way to figure out how to stop server after page load!
-    time.sleep(5)
+    time.sleep(10)
 
     continue_server = False
     

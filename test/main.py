@@ -9,6 +9,7 @@ from itertools import cycle
 import os.path
 from collections import OrderedDict
 
+import logging
 import sys
 import pexpect
 import time
@@ -76,6 +77,9 @@ for name, test in tests.iteritems():
         print('.',end="")
         c.expect(PROMPT)
     
+    # logging.error('Status:'+''.join(c.before.split("\r\n"))
+    # logging.error('Status:'+''.join(c.before.split("\r\n"))
+
     if ''.join(c.before.split("\r\n")[1:-1]) != test["expect"]:
         ''' Test Failed '''
         print(" => Failed.")
@@ -97,10 +101,6 @@ if os.path.isfile(TEST_LOG):
         log = f.read()
 
 c.kill(1)
-
-print("\nStatistics:")
-print("Ran:", ran)
-print("Failed:", failed)
 
 if failed >0:
     print("Test",sep="", end="")
@@ -147,3 +147,17 @@ if len(history.split("\n"))>5:
 
 with open(TEST_LOG, "w") as f:
         f.write(history+current_result+"\n")
+
+print("\nStatistics:")
+print("Ran:", ran)
+print("Failed:", failed)
+
+if failed == 0:
+    print("\n\n")
+    print(" ███████╗██╗   ██╗ ██████╗ ██████╗███████╗███████╗███████╗ ");
+    print(" ██╔════╝██║   ██║██╔════╝██╔════╝██╔════╝██╔════╝██╔════╝ ");
+    print(" ███████╗██║   ██║██║     ██║     █████╗  ███████╗███████╗ ");
+    print(" ╚════██║██║   ██║██║     ██║     ██╔══╝  ╚════██║╚════██║ ");
+    print(" ███████║╚██████╔╝╚██████╗╚██████╗███████╗███████║███████║ ");
+    print(" ╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝╚══════╝╚══════╝╚══════╝ \n\n");
+                                                         

@@ -65,6 +65,7 @@
                 margin-right: auto;
                 clip-path: circle(50%, 50%, 35%);
                 -webkit-clip-path: circle(50%,50%,35%);
+                clip-path: url("#tooltip-image");
             }
 
             #graph {
@@ -147,38 +148,29 @@
             function showDetails(d,i, node) {
                 data = d3.select(node).data()[0];
                 content = "";
-                if ("picture" in data) {
+                if(typeof data["name"] != "string") {
                     data["name"] = data["name"]["first"] + " " + data["name"]["last"];
                     data["location"] = data["location"]["street"];
-                    content += "<h1 class='main'>" + data["name"] + '</h1>';
-                    $.each(["location","email", "phone"], function(d,field) {
-                        content += "<p class='main'>" + data[field] + '</p>';
-                    });
-                    d3.select('#who').text(data["name"]);
-                    content += '<img src="'+data["picture"]+'" width="150" class="image"/>'
+                }
+                content += "<h1 class='main'>" + data["name"] + '</h1>';
+                $.each(Object.keys(data["mapping"]), function(d,i) {
+                    if (data["mapping"][i] != "picture" && data["mapping"][i] != "name") {
+                        content += "<p class='main'>" + data[data["mapping"][i]] + '</p>';
+                    }
+                });
+                d3.select('#who').text(data["name"]);
+                content += "<clipPath id='tooltip-image'><circle cx='106' cy='106' r='75'></circle></clipPath>";
+                if("picture" in data){
+                    content += '<svg width="200px" height="200px"><defs><clipPath id="myClip"><circle r="80" cx="60%" cy="50%"></circle></clipPath></defs><image x="7.5%" width="200" height="200" y="10" xlink:href="'+data["picture"]+'"clip-path="url(#myClip)"></image></svg>';
                 }
                 else {
-                    for (field in data.mapping) {
-                        content += '<p class="main">' + data.mapping[field] + " : " + data[data.mapping[field]] + '</p>'
-                    }
+                    content += '<svg width="200px" height="200px"><defs><clipPath id="myClip"><circle r="80" cx="60%" cy="50%"></circle></clipPath></defs><image x="7.5%" width="200" height="200" y="10" xlink:href="http://www.columbia.edu/~at2904/default_profile.jpg"clip-path="url(#myClip)"></image></svg>';   
                 }
                 tooltip.showTooltip(content,d3.event);
             }
             // # Mouseout function
             function hideDetails(d,i) {
                 tooltip.hideTooltip();
-            }
-            
-            function getRandomUser() {
-                result = '';
-                $.ajax({
-                  dataType: "json",
-                  url: "http://api.randomuser.me/",
-                  async: false,
-                  success: function(data){
-                    result = data["results"][0]["user"];
-                }});
-                return result;
             }
 
             $.ajax({
@@ -189,15 +181,6 @@
                     mapping = {};
                     index = 0;
                       $.each(data.nodes,function(i,node){
-                            if(node.name == "generate") {
-                                old_data = node;
-                                node = getRandomUser();
-
-                                node["id"] = old_data["id"];
-                                node["__cluster__"] = null;
-                                node["tags"] = " ";
-                                node["index"] = old_data["index"];
-                            }
                             nodes.push(node);
                             mapping[node["id"]] = index;
                             index = index+1;
@@ -208,6 +191,123 @@
                           }); 
                 }
             });
+
+            var cluster = function() {
+                var width = window.innerWidth - 25,
+                    height = window.innerHeight - 25,
+                    padding = 10, // separation between same-color nodes
+                    clusterPadding = 40, // separation between different-color nodes
+                    maxRadius = 12;
+
+                var n = 200, // total number of nodes
+                    m = 10; // number of distinct clusters
+
+                var color = d3.scale.category10()
+                    .domain(d3.range(m));
+
+                // The largest node for each cluster.
+                var clusters = new Array(m);
+
+                var nodes = d3.range(n).map(function() {
+                  var i = Math.floor(Math.random() * m),
+                      r = 25,
+                      d = {cluster: i, radius: r};
+                  if (!clusters[i] || (r > clusters[i].radius)) clusters[i] = d;
+                  return d;
+                });
+
+                    console.log(nodes);
+                // Use the pack layout to initialize node positions.
+                d3.layout.pack()
+                    .sort(null)
+                    .size([window.innerWidth, window.innerHeight])
+                    .children(function(d) { return d.values; })
+                    .value(function(d) { return d.radius * d.radius; })
+                    .nodes({values: d3.nest()
+                      .key(function(d) { return d.cluster; })
+                      .entries(nodes)});
+
+                var force = d3.layout.force()
+                    .nodes(nodes)
+                    .size([width, height])
+                    .gravity(0.02)
+                    .charge(-30)
+                    .on("tick", tick)
+                    .start();
+
+                var svg = d3.select("body").append("svg")
+                    .attr("width", width)
+                    .attr("height", height);
+
+                var node = svg.selectAll("circle")
+                    .data(nodes)
+                  .enter().append("circle")
+                    .style("fill", function(d) { return color(d.cluster); })
+                    .call(force.drag);
+
+                node.transition()
+                    .duration(750)
+                    .delay(function(d, i) { return i * 5; })
+                    .attrTween("r", function(d) {
+                      var i = d3.interpolate(0, d.radius);
+                      return function(t) { return d.radius = i(t); };
+                    });
+
+                function tick(e) {
+                  node
+                      .each(cluster(10 * e.alpha * e.alpha))
+                      .each(collide(1))
+                      .attr("cx", function(d) { return d.x; })
+                      .attr("cy", function(d) { return d.y; });
+                }
+
+                // Move d to be adjacent to the cluster node.
+                function cluster(alpha) {
+                  return function(d) {
+                    var cluster = clusters[d.cluster];
+                    if (cluster === d) return;
+                    var x = d.x - cluster.x,
+                        y = d.y - cluster.y,
+                        l = Math.sqrt(x * x + y * y),
+                        r = d.radius + cluster.radius;
+                    if (l != r) {
+                      l = (l - r) / l * alpha;
+                      d.x -= x *= l;
+                      d.y -= y *= l;
+                      cluster.x += x;
+                      cluster.y += y;
+                    }
+                  };
+                }
+
+                // Resolves collisions between d and all other circles.
+                function collide(alpha) {
+                  var quadtree = d3.geom.quadtree(nodes);
+                  return function(d) {
+                    var r = d.radius + maxRadius + Math.max(padding, clusterPadding),
+                        nx1 = d.x - r,
+                        nx2 = d.x + r,
+                        ny1 = d.y - r,
+                        ny2 = d.y + r;
+                    quadtree.visit(function(quad, x1, y1, x2, y2) {
+                      if (quad.point && (quad.point !== d)) {
+                        var x = d.x - quad.point.x,
+                            y = d.y - quad.point.y,
+                            l = Math.sqrt(x * x + y * y),
+                            r = d.radius + quad.point.radius + (d.cluster === quad.point.cluster ? padding : clusterPadding);
+                        if (l < r) {
+                          l = (l - r) / l * alpha;
+                          d.x -= x *= l;
+                          d.y -= y *= l;
+                          quad.point.x += x;
+                          quad.point.y += y;
+                        }
+                      }
+                      return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+                    });
+                  };
+                }
+            }
 
             var next = function() {
                             d3.select('#next_link').style('display', 'none');
@@ -222,13 +322,13 @@
 
                 // Make a <g> tag for zoom purposes.
                 var gPrime = svg.append('g');
-                var g = svg.append('g').attr('clip-path', "url(#clipPath)");
+                var g = svg.append('g');
                 var profile_size = 25;
                 
-                var clipPath = g.append('clipPath').attr("id","clipPath");
-                $.each(nodes, function(i,link){
-                    clipPath.append('circle').attr("id","image-"+i).attr("cx",profile_size).attr("cy",profile_size).attr("r",profile_size);
-                });
+                // $.each(nodes, function(i,link){
+                //     var clipPath = g.append('clipPath').attr("id","clipPath-"+i);
+                //     clipPath.append('circle').attr("id","image-"+i).attr("cx",profile_size).attr("cy",profile_size).attr("r",profile_size);
+                // });
 
                 svg.call(d3.behavior.zoom().on('zoom', function() {
                     g.attr('transform',
@@ -271,6 +371,54 @@
                             var sizeForNode = function(i) {
                                 return Math.round(lerp(2, 10, (friendships[i] || [-1]).length / maxFriends));
                             };
+
+                            // Move d to be adjacent to the cluster node.
+                            function cluster(alpha) {
+                              return function(d) {
+                                var cluster = clusters[d.cluster];
+                                if (cluster === d) return;
+                                var x = d.x - cluster.x,
+                                    y = d.y - cluster.y,
+                                    l = Math.sqrt(x * x + y * y),
+                                    r = d.radius + cluster.radius;
+                                if (l != r) {
+                                  l = (l - r) / l * alpha;
+                                  d.x -= x *= l;
+                                  d.y -= y *= l;
+                                  cluster.x += x;
+                                  cluster.y += y;
+                                }
+                              };
+                            }
+                            
+                            // Resolves collisions between d and all other circles.
+                            function collide(alpha) {
+                              var quadtree = d3.geom.quadtree(nodes);
+                              return function(d) {
+                                var r = d.radius + maxRadius + Math.max(padding, clusterPadding),
+                                    nx1 = d.x - r,
+                                    nx2 = d.x + r,
+                                    ny1 = d.y - r,
+                                    ny2 = d.y + r;
+                                quadtree.visit(function(quad, x1, y1, x2, y2) {
+                                  if (quad.point && (quad.point !== d)) {
+                                    var x = d.x - quad.point.x,
+                                        y = d.y - quad.point.y,
+                                        l = Math.sqrt(x * x + y * y),
+                                        r = d.radius + quad.point.radius + (d.cluster === quad.point.cluster ? padding : clusterPadding);
+                                    if (l < r) {
+                                      l = (l - r) / l * alpha;
+                                      d.x -= x *= l;
+                                      d.y -= y *= l;
+                                      quad.point.x += x;
+                                      quad.point.y += y;
+                                    }
+                                  }
+                                  return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+                                });
+                              };
+                            }
+
                             // Create a force layout to display nodes.
                             var force = d3.layout.force()
                                 .charge(-1000)
@@ -302,6 +450,12 @@
                             var node = g.selectAll('image.node')
                                 .data(graph.nodes)
                                 .enter().append('image')
+                                .attr("clip-path", function(d){ 
+                                    var id = d3.select(this).data()[0].id;
+                                    var clipPath = g.append('clipPath').attr("id","clipPath-"+id);
+                                    clipPath.append('circle').attr("id","image-"+id).attr("cx",profile_size).attr("cy",profile_size).attr("r",profile_size);
+                                    return "url(#clipPath-"+id+")";
+                                })
                                 .attr("class","node")
                                 .attr("id", function(d) {
                                     return "node-"+d3.select(this).data()[0].id;
@@ -309,7 +463,13 @@
                                 .attr('width', 2*profile_size)
                                 .attr('height', 2*profile_size)
                                 .attr('xlink:href', function(d) {
-                                    return d3.select(this).data()[0].picture;
+                                    if("picture" in d3.select(this).data()[0]) {
+                                        return "http://api.randomuser.me/portraits/thumb/"+d3.select(this).data()[0].picture.split("portraits")[1];
+                                    }
+                                    else {
+                                        return "http://www.columbia.edu/~at2904/default_profile.jpg";
+                                    }
+                                    
                                 })
                                 .style('stroke', 'rgba(100, 100, 100, 0.2)')
                                 .style('cursor', 'pointer')
@@ -329,9 +489,9 @@
                                 .call(force.drag);
 
                             // Hook up some events to D3.js.
-                            force.on('tick', function() {
-                                node.attr('x', function(d) { $("#image-"+d.id).attr("cx",d.x+profile_size); return d.x; })
-                                    .attr('y', function(d) { $("#image-"+d.id).attr("cy",d.y+profile_size); return d.y; });
+                            force.on('tick', function(e) {
+                                node.attr('x', function(d) { $("#image-"+d.id).attr("cx",d.x); return d.x - profile_size; })
+                                    .attr('y', function(d) { $("#image-"+d.id).attr("cy",d.y); return d.y - profile_size; });
 
                                 edge.attr('x1', function(d) { return d.source.x; })
                                     .attr('y1', function(d) { return d.source.y; })

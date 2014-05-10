@@ -6,6 +6,8 @@ import json
 import random
 import grapheneUI as gui
 import sys
+import inspect
+import random
 
 ids=lib.modified_dict()
 
@@ -48,6 +50,16 @@ def ginput(*args):
             
         lines = f.readlines()
         f.close()
+
+        try:
+            f = open("data/random_profiles",'r')
+        except Exception, e:
+            logging.error("random_profiles Not Found.")
+            gexit()
+
+        random_profiles = json.loads(f.read())
+        f.close()
+
         finalEdgeList = dict()
         nodes = {}
         number_of_nodes = len(lib.nodeList)
@@ -55,13 +67,34 @@ def ginput(*args):
         for i,line in enumerate(lines):
             properties = {}
             edgeF, edgeT = [int(x) for x in line.split()]
-            
             properties["__connector__"] = "->"
             if edgeF not in lib.nodeList.keys():
-                lib.nodeList[edgeF] = func_map[args[0]]("generate", "generate")
+                profile_attributes = []
+                
+                random_profile = random_profiles[random.randint(0,539)]["user"]
+                
+                for k,v in func_map[args[0]].mapping.iteritems():
+                    if v == "name":
+                        profile_attributes.append(random_profile[v]["first"] + " " + random_profile[v]["last"])    
+                    elif v == "city":
+                        profile_attributes.append(random_profile["location"]["city"])    
+                    else:
+                        profile_attributes.append(random_profile[v])
+
+                lib.nodeList[edgeF] = func_map[args[0]](*profile_attributes)
                 lib.nodeList[edgeF].id = edgeF
             if edgeT not in lib.nodeList.keys():
-                lib.nodeList[edgeT] = func_map[args[0]]("generate", "generate")
+                profile_attributes = []
+                random_profile = random_profiles[random.randint(0,539)]["user"]
+                for k,v in func_map[args[0]].mapping.iteritems():
+                    if v == "name":
+                        profile_attributes.append(random_profile[v]["first"] + " " + random_profile[v]["last"])    
+                    elif v == "city":
+                        profile_attributes.append(random_profile["location"]["city"])    
+                    else:
+                        profile_attributes.append(random_profile[v])
+
+                lib.nodeList[edgeT] = func_map[args[0]](*profile_attributes)
                 lib.nodeList[edgeT].id = edgeT
             try:
                 finalEdgeList[edgeF][edgeT] = properties
