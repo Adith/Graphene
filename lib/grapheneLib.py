@@ -107,6 +107,7 @@ class Graph:
 	id = -1
 	
 	edgeList = {}
+	graph_type = "d"
 
 	clusters = []
 	
@@ -121,6 +122,7 @@ class Graph:
 		
 		gkey = gkey.value # Fix, because this is an ASTNode. :/
 		self.id = globalLastGraphIDVal + 1
+		self.graph_type = gtype
 		globalLastGraphIDVal = globalLastGraphIDVal + 1
 
 		if edgeList is not None:
@@ -139,6 +141,18 @@ class Graph:
 						self.shadowEdgeList[destination][source] = None
 					except KeyError, e:
 						self.shadowEdgeList[destination] = { source : None }
+
+					
+					if(gtype.value != "d"):
+						try:
+							self.edgeList[destination][source] = properties
+						except KeyError, e:
+							self.edgeList[destination] = { source : properties }
+	
+						try:
+							self.shadowEdgeList[source][destination] = None
+						except KeyError, e:
+							self.shadowEdgeList[source] = { destination : None }
 
 	def overlay(self, overlay_list=None):
 		overlay_node_list = []
@@ -190,8 +204,58 @@ class Graph:
 			nodes.append(nodeList[n])
 		return nodes
 
+	def hasNode(self, node):
+		if node.__class__.__bases__[0].__name__ not in ["Node"]:
+			if(isinstance(node, list)):
+				node = node[0]
+			else:
+				try:
+					node = nodeList[node]
+				except KeyError, e:
+					logging.error("Node not found")
+					gexit()
+				except Exception, e:
+					logging.error("Illegal Lookup")
+					gexit()
+
+		if node in self.getNodes():
+			return True
+		return False
+
+	def hasEdge(self, src, dst):
+		src_id = src[0].id
+		dst_id = dst[0].id
+		try:
+			if(dst_id in self.edgeList[src_id]):
+				return True
+			return False
+		except Exception, e:
+			return False
+
+	def inDegree(self, node):
+		node_id = node[0].id
+		try:
+			return len(self.shadowEdgeList[node_id].keys())
+		except Exception, e:
+			return 0
+
+	def outDegree(self, node):
+		node_id = node[0].id
+		try:
+			return len(self.edgeList[node_id].keys())
+		except Exception, e:
+			return 0
+
+	def degree(self, node):
+		node_id = node[0].id
+		if self.graph_type == "d":
+			return len(self.edgeList[node_id].keys()) + len(self.shadowEdgeList[node_id].keys())
+		else:
+			return len(self.edgeList[node_id].keys())
+
 	def getAdjacent(self, node):
 		adjacent = modified_list()
+		node =  ast.evaluateAST(node)[0]
 		if node.id in self.shadowEdgeList:
 			for adjacent_id in self.shadowEdgeList[node.id]:
 				adjacent.append(nodeList[adjacent_id])
@@ -199,6 +263,12 @@ class Graph:
 			for adjacent_id in self.edgeList[node.id]:
 				adjacent.append(nodeList[adjacent_id])
 		return adjacent
+
+	def getNonAdjacent(self,node):
+		all_nodes = self.getNodes()
+		adjacent = self.getAdjacent(node)
+		adjacent.extend(node) 
+		return [item for item in all_nodes if item not in adjacent]
 
 	def listAdjacent(self, node):
 		nodes = self.getAdjacent(node)

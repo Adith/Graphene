@@ -578,8 +578,7 @@ def p_node_removal_expression(p):
 
 def p_node_lookup(p):
     '''nodeLookup : idOrAlphanum COLON idOrAlphanum
-                  | COLON idOrAlphanum
-                  | idOrAlphanum'''
+                  | COLON idOrAlphanum'''
     logging.debug("nodeLookup")
     node = ast.ASTNode()
     node.type = "lookupnode"
@@ -697,7 +696,6 @@ def p_nodeproperty(p):
 def p_assignval(p):
     '''assignmentexpression : ID '=' expression
                             | arglist '=' callchain
-                            | ID '=' nodeLookup
                             | ID '=' SQRBEGIN values SQREND
                             | ID '=' SQRBEGIN SQREND
                             | ID '=' ID SQRBEGIN SQREND
@@ -1115,6 +1113,11 @@ def p_isNumber(p):
         termNode.value = int(p[1])
     p[0] = termNode
     logging.debug(p[0].type)
+
+def p_isNode(p):
+    ''' idOrAlphanum : nodeLookup '''
+    logging.debug("idOrAlphanum : lookupnode")
+    p[0] = p[1]
 
 def p_isBoolean(p):
     ''' idOrAlphanum : TRUE 
