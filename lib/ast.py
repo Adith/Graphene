@@ -348,14 +348,18 @@ def evaluateAST(a, lineno= "unknown", chained= False):
         logging.debug("------argEdge-----")
         curr =  helper.ids[a.children[0]].get_data()
         shadow = helper.ids[a.children[0]].get_shadow()
-        if a.children[1].value in curr.keys():
-            curr[a.children[1].value][a.children[3].value]={"__connector__":a.children[2]}
+
+        src_id = evaluateAST(a.children[1]).value[0].id
+        dst_id = evaluateAST(a.children[3]).value[0].id
+
+        if src_id in curr.keys():
+            curr[src_id][dst_id]={"__connector__":a.children[2]}
         else:
-            curr[a.children[1].value] = {a.children[3].value : {"__connector__":a.children[2]}}
+            curr[src_id] = {dst_id : {"__connector__":a.children[2]}}
         try:
-            shadow[a.children[3].value][a.children[1].value] = None
+            shadow[dst_id][src_id] = None
         except KeyError, e:
-            shadow[a.children[3].value] = { a.children[1].value : None }
+            shadow[dst_id] = { src_id : None }
         
         helper.ids[a.children[0]].edgeList=curr
         return helper.ids[a.children[0]]
@@ -755,7 +759,7 @@ def evaluateAST(a, lineno= "unknown", chained= False):
             for destination, properties in destinations.iteritems():
                 destination = int(destination)
                 if destination not in lib.nodeList.keys():
-                    logging.error("Destination Node #"+str(destination)+"not found.")
+                    logging.error("Destination Node #"+str(destination)+" not found.")
                     helper.gexit(-1)
 
         helper.ids[a.children[0].value] = new_graph

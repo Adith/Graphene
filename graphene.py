@@ -556,7 +556,7 @@ def p_statement(p):
     p[0]=p[1]
 
 def p_edgeexpression(p):
-    '''edgeaddition : ID ADD_STORE idOrAlphanum CONNECTOR idOrAlphanum'''
+    '''edgeaddition : ID ADD_STORE nodeLookup CONNECTOR nodeLookup'''
     logging.debug("-------In edgeaddition-------")
     node = ast.ASTNode()
     node.type = "addedge"
