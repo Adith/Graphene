@@ -89,9 +89,21 @@
                 right: 20px;
                 bottom: 20px;
             }
-
+            
             .active {
-                fill: rgb(204,75,68) !important;
+                opacity: 1.0;
+            }
+
+            .inactive {
+                opacity: 0.3;
+            }
+            
+            .focus {
+                opacity: 1.0 !important;
+            }
+
+            .blur {
+                opacity: 0.3 !important;   
             }
 
             #who {
@@ -143,7 +155,7 @@
             var lerp = function(a, b, t) {
                 return a + (b - a) * t;
             };
-            var nodes = [], lastNodeId, links = [];
+            var nodes = [], lastNodeId, links = [], attributes;
 
             function showDetails(d,i, node) {
                 data = d3.select(node).data()[0];
@@ -180,6 +192,7 @@
                 success: function(data) {
                     mapping = {};
                     index = 0;
+                    attributes = data.attributes;
                       $.each(data.nodes,function(i,node){
                             nodes.push(node);
                             mapping[node["id"]] = index;
@@ -456,7 +469,18 @@
                                     clipPath.append('circle').attr("id","image-"+id).attr("cx",profile_size).attr("cy",profile_size).attr("r",profile_size);
                                     return "url(#clipPath-"+id+")";
                                 })
-                                .attr("class","node")
+                                .attr("class", function(d) {
+                                    if(attributes["overlay"])
+                                    {
+                                        if(d3.select(this).data()[0].__tags__.indexOf("active") > -1) {
+                                            return "node "+d3.select(this).data()[0].__tags__;
+                                        }
+                                        else {
+                                            return "node "+d3.select(this).data()[0].__tags__+" inactive";
+                                        }
+                                    }
+                                    return "node "+d3.select(this).data()[0].__tags__;
+                                })
                                 .attr("id", function(d) {
                                     return "node-"+d3.select(this).data()[0].id;
                                 })
@@ -477,10 +501,20 @@
                                     // d3.select(this)
                                     //     .attr('r', sizeForNode(i) + 5)
                                     //     .style('fill', '#a00');
+                                    
+                                    $("image").each(function(i){
+                                        $(this).attr("class", $(this).attr("class")+" blur");
+                                    });
+
+                                    $(this).attr("class", $(this).attr("class").replace("blur","") + "focus");
                                     showDetails(d, i, this);
                                 })
                                 .on('mouseout', function(d, i) {
                                     hideDetails(d,i);
+                                    $("image").each(function(i){
+                                        $(this).attr("class", $(this).attr("class").replace("blur","").replace("focus",""));
+                                    });
+                                    
                                     // d3.select(this)
                                     //     .attr('r', sizeForNode(i))
                                     //     .style('fill', '#aaa');

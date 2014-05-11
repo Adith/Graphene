@@ -33,6 +33,7 @@ import logging
 
 fread = False
 logger = logging.getLogger()
+lineNo = 0;
 
 if len(sys.argv) > 1:
     if "-d" in sys.argv:
@@ -44,8 +45,56 @@ if len(sys.argv) > 1:
 
 NumberTypes = (types.IntType, types.LongType, types.FloatType, types.ComplexType)
 
-tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'LAMDA', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'FOREACH', 'IN', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR', 'ADD_STORE', 'REMOVE_STORE')
-literals = [';', '=', '+', '-', '*', '/']
+errorDict = {'ID':'id', 
+    'LPAREN':'\'(\'', 
+    'DEF':'\'def\'', 
+    'IMPLY': '\'=>\'', 
+    'LAMDA':'\'lambda\'', 
+    'RPAREN':'\')\'', 
+    'STRING': 'string',
+    'SQRBEGIN':'\'[\'', 
+    'SQREND':'\']\'', 
+    'CURLBEGIN':'\'{\'', 
+    'CURLEND':'\'}\'', 
+    'NUMBER': 'number',
+    'IF':'\'if\'', 
+    'ELSE':'\'else\'', 
+    'COMMA':'\',\'',  
+    'GR':'\'>\'', 
+    'LS':'\'<\'', 
+    'NODE':'\'NodeType\'', 
+    'GRAPH':'\'Graph\'',
+    'GRAPHTYPE':'\'d\', \'u\'', 
+    'CONNECTOR':'\'->\', \'<->\'', 
+    'NEW':'\'new\'', 
+    'NEWLINE':'\'\\n\'', 
+    'DOT':'\'.\'', 
+    'WHILE':'\'while\'', 
+    'FOR':'\'for\'', 
+    'FOREACH':'\'foreach\'', 
+    'IN':'\'in\'', 
+    'HAS':'\'has\'', 
+    'ON':'\'on\'', 
+    'COLON':'\':\'', 
+    'GRTEQ':'\'>=\'',
+    'LESSEQ':'\'<=\'',
+    'EQUAL':'\'=\'',
+    'NEQUAL':'\'!=\'',
+    'LOGAND':'\'&&\'',
+    'LOGOR':'\'||\'', 
+    'ADD_STORE':'\'+=\'', 
+    'REMOVE_STORE':'\'-=\'',
+    '=':'\'=\'',
+    ';':'\';\'',
+    '+': '\'+\'',
+    '*': '\'*\'',
+    '-': '\'-\'',
+    '/': '\'/\'',
+    '%': '\'%\''}
+
+tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'LAMDA', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'FOREACH', 'IN', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR', 'ADD_STORE', 'REMOVE_STORE','TRUE','FALSE')
+literals = [';', '=', '+', '-', '*', '/', '%']
+
 t_GR = r'\>'
 t_LS = r'\<'
 
@@ -68,6 +117,8 @@ RESERVED = {
   "->": "CONNECTOR",
   "<->": "CONNECTOR",
   "lambda": "LAMDA",
+  "True":"TRUE",
+  "False":"FALSE"
   }
 
 t_IMPLY = r'=>'
@@ -100,7 +151,7 @@ t_REMOVE_STORE = r'-='
 
 #TODO - this symbol is giving lexer error -NEHA
 # add parsing for logical OR.
-#t_LOGOR = r'\||'
+t_LOGOR = r'\|\|'
 
 t_LPAREN = r'\('
 
@@ -118,19 +169,30 @@ t_NEW = r'new'
 
 t_CONNECTOR = r'<?->'
 
-# t_GRAPHTYPE = r'[du]{'
-
 precedence = (
-	('left','LOGAND'),
+	('left','LOGAND','LOGOR'),
 	('left', 'EQUAL', 'NEQUAL'),
 	('left','LS','GR','GRTEQ', 'LESSEQ'),
 	('left', '+', '-'),
+    ('left', '%'),
 	('left', '*', '/'),
 )
 
+def t_TRUE(t):
+    r'True'
+    t.type = RESERVED.get(t.value, "TRUE")
+    logging.debug("----- BOOL: "+t.type+" ------")
+    return t
+
+def t_FALSE(t):
+    r'False'
+    t.type = RESERVED.get(t.value, "FALSE")
+    logging.debug("----- BOOL: "+t.type+" ------")
+
 def t_GRAPHTYPE(t):
-    r'[du]{'
+    r'(d|u){1}{'
     t.type = RESERVED.get(t.value, "GRAPHTYPE")
+    logging.debug("----- TOKEN: GRAPHTYPE - "+t.type+" ------")
     return t
 
 def t_ID(t):
@@ -168,56 +230,26 @@ def p_error(p):
     if p is None:
         print "Syntax error: unexpected EOF"
     else:
-        print "Syntax error at line {}: unexpected token {}".format(p.lineno, p.value)
+        print "Syntax error at line {}: unexpected token '{}'".format(p.lineno, p.value)
 
     #Ugly hack since Ply doesn't provide any useful error information
     import inspect
     frame = inspect.currentframe()
+
     cvars = frame.f_back.f_locals
-    print 'Expected:', ', '.join(cvars['actions'][cvars['state']].keys())
-    print 'Found:', cvars['ltype']
-    print 'Current stack:', cvars['symstack']
+    errorOutput = []
+
+    for k in cvars['actions'][cvars['state']].keys():
+        errorOutput.append(errorDict[k])
+        # print errorDict[k]
+
+    print 'Expected one of: ',', '.join(errorOutput) 
+    print '\n'
+    # print 'Found:', cvars['ltype']
+    # print 'Current stack:', cvars['symstack']
     sys.exit()
 
-def cluster(graph,lamda):
-    clusters = []
-    lamda = lambda x,y:x.get_data()['age']==y.get_data()['age']
-    nodes = graph.getNodes()
-    for n in nodes:
-        print n.get_data()
-    if lamda(nodes[0],nodes[1]):
-        clusters.append([nodes[0],nodes[1]])
-    else:
-        clusters.append([nodes[0]])
-        clusters.append([nodes[1]])
-    print clusters
-    nodes = nodes[2:]
-    for node in nodes:
-        cluster_ids = []
-        index = 0 
-        for cluster in clusters:
-            if lamda(node,cluster[0]):
-                cluster.append(node)
-                cluster_ids.append(index)
-            index+=1
-        if len(cluster_ids)==0:
-            clusters.append([node])
 
-        # Merge all clusters a node belongs to
-        if len(cluster_ids)>1:
-            clusters[cluster_ids[0]] = list(set(clusters[cluster_ids]))
-            for ind in range(1,len(cluster_ids)):
-                clusters[ind]=None
-        clusters = filter(lambda a: a != None, clusters)
-    print len(clusters)
-    index=0
-    for cluster in clusters:
-        for node in cluster: 
-            #print lib.nodeList[node.get_data()['id']].get_data()
-            node.__cluster__=index
-        index+=1
-    #print nodeList
-    return clusters
 
 
 lexer = lex.lex();
@@ -240,7 +272,7 @@ def p_declaration(p):
                    | vardec'''
     logging.debug("----- declaration ------")
     p[0]= p[1]
-    ast.evaluateAST(p[0])
+    ast.evaluateAST(p[0], lineNo)
 
 def p_vardec(p):
     '''vardec : node-dec ';'
@@ -300,19 +332,19 @@ def p_graph(p):
     gtype = ast.ASTNode()
     gtype.type = "terminal"
     gtype.value = p[4][:1]
-    edges = p[6]
+    edges = p[5]
 
     key = ast.ASTNode()
     key.type = "terminal"
     key.value = "id"
 
-    if(len(p) == 10):
-        key.value = p[9]
+    if(len(p) == 9):
+        key.value = p[8]
 
     node.children.append(gid)
     node.children.append(gtype)
     node.children.append(key)
-    node.children.append(p[5])
+    node.children.append(edges)
 
     p[0] = node
 
@@ -355,7 +387,7 @@ def p_decstatement(p):
     '''declaration : statement'''
     logging.debug("---- declaration ---")
     p[0]=p[1]
-    ast.evaluateAST(p[0])
+    ast.evaluateAST(p[0], lineNo)
 
 def p_compoundstatement(p):
     '''statement : compoundstatement'''
@@ -410,8 +442,8 @@ def p_lambda(p):
     logging.debug("In lambda")
     termNode = ast.ASTNode()
     termNode.type = "lambda"
-    termNode.children.append(p[2])
     termNode.children.append(p[4])
+    termNode.children.append(p[2])
     termNode.children.append(p[6])
     p[0] = termNode
 
@@ -434,12 +466,13 @@ def p_assignlambda(p):
 
     compoundChild = ast.ASTNode()
     compoundChild.type = 'lamda-signature'
-    compoundChild.children.append(p[3].children[1])  #statements
-    compoundChild.children.append(p[3].children[0])  #arguments
+    compoundChild.children.append(p[3].children[0])  #statements
+    compoundChild.children.append(p[3].children[1])  #arguments
     compoundChild.children.append(p[3].children[2])  #return
-    print '++++++++++++++++++++++++'
-    print Node.children
-    print '++++++++++++++++++++++++'
+    compoundChild.children.append(p[1])
+    logging.debug('++++++++++++++++++++++++')
+    logging.debug(Node.children)
+    logging.debug('++++++++++++++++++++++++')
     node.children.append(compoundChild)
 
     p[0]=node 
@@ -479,8 +512,8 @@ def p_returnarguments(p):
     p[0] = Node
 
 def p_returnset(p):
-    '''returnset : idOrAlphanum
-                | idOrAlphanum COMMA returnset'''
+    '''returnset : expression
+                | expression COMMA returnset'''
 
     logging.debug("returnset")
 
@@ -493,18 +526,6 @@ def p_returnset(p):
         arglistNode.children.extend(p[3].children)
     p[0] = arglistNode
 
-######################################################################
-
-#
-#  ████████╗ ██████╗     ██████╗  ██████╗
-#  ╚══██╔══╝██╔═══██╗    ██╔══██╗██╔═══██╗
-#     ██║   ██║   ██║    ██║  ██║██║   ██║
-#     ██║   ██║   ██║    ██║  ██║██║   ██║
-#     ██║   ╚██████╔╝    ██████╔╝╚██████╔╝
-#     ╚═╝    ╚═════╝     ╚═════╝  ╚═════╝
-#
-#   Handle multiple statements
-#
 
 def p_statementlist(p):
     '''statementlist : statement
@@ -523,8 +544,8 @@ def p_statementlist(p):
 
 def p_statement(p):
     '''statement : expressionstatement
-                 | iterationstatement
-				 | selectionstatement'''
+                 | iterationstatement ';'
+				 | selectionstatement ';' '''
 
     logging.debug("statement")
 
@@ -636,7 +657,8 @@ def p_expression(p):
     '''completeexpression : callchain
                   | assignmentexpression
                   | edgeaddition
-                  | noderemoval'''
+                  | noderemoval
+                  | edgehasproperty'''
 
     logging.debug("expr")
     p[0] = p[1]
@@ -648,14 +670,33 @@ def p_expression(p):
 ##    '''assignmentexpression : Type ID '=' Type '.' new '(' ')'
 ##                            | Type ID '=' assignmentexpression'''
 
+def p_edgehasproperty(p):
+    '''edgehasproperty : ID DOT SQRBEGIN STRING '=' idOrAlphanum SQREND'''
+    node = ast.ASTNode()
+    node.type = "query"
+    node.children.append(p[1])
+    node.children.append(p[4])
+    node.children.append(p[6])
+    p[0] = node
+
+def p_nodeproperty(p):
+    '''expression : ID DOT SQRBEGIN STRING SQREND'''
+    logging.debug('++++++++++++++++++')
+    logging.debug(p[4])
+    logging.debug('++++++++++++++++++')
+    node = ast.ASTNode()
+    node.type = "node_prop"
+    node.children.append(p[1])
+    node.children.append(p[4])
+    p[0] = node
+
 def p_assignval(p):
     '''assignmentexpression : ID '=' expression
-                            | arglist '=' expression
+                            | arglist '=' callchain
                             | ID '=' nodeLookup
                             | ID '=' SQRBEGIN values SQREND
                             | ID '=' SQRBEGIN SQREND
                             | ID '=' ID SQRBEGIN SQREND
-                            | ID '=' ID SQRBEGIN idOrAlphanum SQREND
                             | ID SQRBEGIN idOrAlphanum SQREND '=' idOrAlphanum
                             | ID SQRBEGIN idOrAlphanum SQREND '=' SQRBEGIN values SQREND'''
 
@@ -760,6 +801,7 @@ def p_valueList(p):
 def p_expression_binop(p):
     '''expression : expression '+' expression
                   | expression '-' expression
+                  | expression '%' expression
                   | expression '*' expression
                   | expression '/' expression'''
 
@@ -781,7 +823,15 @@ def p_expression_binop(p):
         node.children.append(p[1])
         node.children.append(p[3])
         p[0] = node
-
+    
+    elif p[2] == '%' :
+        logging.debug('---modulo---')
+        node = ast.ASTNode()
+        node.type = "modulo"
+        node.children.append(p[1])
+        node.children.append(p[3])
+        p[0] = node
+    
     elif p[2] == '*' :
         logging.debug('---multiply---')
         node = ast.ASTNode()
@@ -844,9 +894,9 @@ def p_expression_relop(p):
 ##        elif p[2] == '>=' : p[0] = p[1] >= p[3]
 ##        elif p[2] == '<=' : p[0] = p[1] <= p[3]
 
-# TODO - add grammar for logical OR - symbol waw giving error - NEHA.
 def p_expression_logicalop(p):
-    '''expression : expression LOGAND expression'''
+    '''expression : expression LOGAND expression
+                  | expression LOGOR expression'''
     logging.debug(str(p[1])+str(p[3]))
 
     if p[2] == '&&' :
@@ -904,38 +954,60 @@ def p_expression_group(p):
     '''expression : LPAREN expression RPAREN '''
     p[0] = p[2]
 
-def p_expression_string(p):
-    '''expression : STRING'''
-    logging.debug("p_expressionString")
-    termNode = ast.ASTNode()
-    termNode.type = "terminal"
-    termNode.value = str(p[1][1:-1])
-    p[0] = termNode
-    logging.debug(p[0].type)
+# def p_expression_string(p):
+#     '''expression : STRING'''
+#     logging.debug("p_expressionString")
+#     termNode = ast.ASTNode()
+#     termNode.type = "terminal"
+#     termNode.value = str(p[1][1:-1])
+#     p[0] = termNode
+#     logging.debug(p[0].type)
 
-def p_expression_number(p):
-    '''expression : NUMBER'''
+def p_expression_idOrAlphaNum(p):
+    '''expression : idOrAlphanum'''
     logging.debug("p_expressionNumber")
+    # termNode = ast.ASTNode()
+    # termNode.type = "terminal"
+    # if '.' in p[1]:
+    #     termNode.value = float(p[1])
+    # else:
+    #     termNode.value = int(p[1])
+    # p[0] = termNode
+    # logging.debug(p[0].type)
+    p[0] = p[1]
+
+# def p_expression_name(p):
+#     '''expression : ID'''
+#     try:
+#         logging.debug("p_expressionId")
+#         node = ast.ASTNode()
+#         node.type = "id"
+#         node.children.append(p[1])
+#         p[0]=node
+#     except LookupError:
+#         logging.error(str("Undefined name '%s'" % p[1]))
+#         p[0] = 0
+
+# def p_expression_booleanExp(p):
+#     '''expression : TRUE
+#                   | FALSE '''
+#     logging.debug("p_expressionBoolean")
+#     termNode = ast.ASTNode()
+#     termNode.type = "terminal"
+#     termNode.value = p[1]
+#     p[0] = termNode
+#     logging.debug(p[0].type)
+
+def p_expression_listIndex(p):
+    '''expression : ID SQRBEGIN idOrAlphanum SQREND '''
+    logging.debug("p_expressionListIndex")
     termNode = ast.ASTNode()
-    termNode.type = "terminal"
-    if '.' in p[1]:
-        termNode.value = float(p[1])
-    else:
-        termNode.value = int(p[1])
+    termNode.type = "listIndex"
+    # termNode.value = p[1]
+    termNode.children.append(p[1])
+    termNode.children.append(p[3])
     p[0] = termNode
     logging.debug(p[0].type)
-
-def p_expression_name(p):
-    '''expression : ID'''
-    try:
-        logging.debug("p_expressionId")
-        node = ast.ASTNode()
-        node.type = "id"
-        node.children.append(p[1])
-        p[0]=node
-    except LookupError:
-        logging.error(str("Undefined name '%s'" % p[1]))
-        p[0] = 0
 
 def p_exp_call(p):
     '''expression : callchain'''
@@ -956,8 +1028,8 @@ def p_callchain(p):
     p[0] = node
 
 def p_call(p):
-    '''call : ID LPAREN arglist RPAREN
-            | ID DOT ID LPAREN arglist RPAREN
+    '''call : ID LPAREN callarglist RPAREN
+            | ID DOT ID LPAREN callarglist RPAREN
             | ID DOT ID LPAREN RPAREN
             | ID LPAREN RPAREN'''
 
@@ -990,6 +1062,23 @@ def p_call(p):
             node.children.append(None)  #No arguments passed
     p[0] = node
 
+def p_callarglist(p):
+    '''callarglist : expression COMMA callarglist
+                   | expression'''
+
+    logging.debug("callarglist")
+
+    arglistNode = ast.ASTNode()
+    arglistNode.type = "arglist"
+
+    arglistNode.children.append(p[1])
+
+    if len(p) > 2:
+        arglistNode.children.extend(p[3].children)
+
+    p[0] = arglistNode
+    logging.debug(p[0].type)
+
 def p_arg(p):
     '''arglist : idOrAlphanum COMMA arglist
                | idOrAlphanum'''
@@ -998,11 +1087,10 @@ def p_arg(p):
 
     arglistNode = ast.ASTNode()
     arglistNode.type = "arglist"
-
     arglistNode.children.append(p[1])
 
     if len(p) > 2:
-        arglistNode.children.append(p[3].children[0])
+        arglistNode.children.extend(p[3].children)
 
     p[0] = arglistNode
     logging.debug(p[0].type)
@@ -1017,7 +1105,25 @@ def p_isNumber(p):
 
     termNode = ast.ASTNode()
     termNode.type = "terminal"
-    termNode.value = int(p[1])
+    if '.' in p[1]:
+        termNode.value = float(p[1])
+    else:
+        termNode.value = int(p[1])
+    p[0] = termNode
+    logging.debug(p[0].type)
+
+def p_isBoolean(p):
+    ''' idOrAlphanum : TRUE 
+                     | FALSE'''
+
+    logging.debug("idorstr"+ str(len(p)))
+    for x in p:
+        logging.debug(x)
+    logging.debug("p_isBoolean")
+
+    termNode = ast.ASTNode()
+    termNode.type = "terminal"
+    termNode.value = p[1]
     p[0] = termNode
     logging.debug(p[0].type)
 
@@ -1062,6 +1168,7 @@ if fread:
     with open(sys.argv[2]) as f:
         s = ' '
         for line in f:
+            lineNo += 1
             s = s+line.rstrip()
             if len(s) == 0:
                 s = ' '
@@ -1073,12 +1180,18 @@ else:
     while True:
         try:
             s=raw_input('graphene> ').rstrip()
+            lineNo += 1
             if len(s) == 0:
                 s = ' '
             while s[-1] != ';' or helper.completeCodeStmt(s) == False:
                 s = s+raw_input('>');
+                lineNo += 1
 
         except EOFError:
             break
+
+        except KeyboardInterrupt:
+            print "\n"
+            helper.gexit()
         if not s: continue
         parser.parse(s)
