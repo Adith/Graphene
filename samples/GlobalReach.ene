@@ -3,11 +3,10 @@ graph = input("person","data/0.edges");
 
 def (graph) => getNodeWithMaxDegree
 {
-  maxnode = graph.getNodes().first();
-  maxdegree = graph.getAdjacent(graph.getNodes().first()).length();
-  foreach(node in graph.getNodes())
-    {
-          
+    maxnode = graph.getNodes().first();
+    maxdegree = graph.getAdjacent(graph.getNodes().first()).length();
+    foreach(node in graph.getNodes())
+    {     
          curr = graph.getAdjacent(node).length();
          if(curr > maxdegree)
          {
@@ -22,12 +21,13 @@ def (graph) => GlobalReach
     Nodes = [];
     while(graph.getNodes().length()!=0)
     {
-     current = getNodeWithMaxDegree(graph);
-     Nodes.append(current);
-     foreach(node in graph.getAdjacent(current)){
-      graph -= node;
-     };
-     graph -= current;
+        current = getNodeWithMaxDegree(graph);
+        Nodes.append(current);
+        foreach(node in graph.getAdjacent(current))
+        {
+            graph -= node;
+        };
+        graph -= current;
     };
 } => (Nodes);
 
@@ -35,3 +35,5 @@ g = input("person","data/0.edges");
 
 l = GlobalReach(graph);
 output().overlay(l);
+
+

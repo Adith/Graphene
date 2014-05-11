@@ -92,7 +92,7 @@ errorDict = {'ID':'id',
     '/': '\'/\'',
     '%': '\'%\''}
 
-tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'LAMDA', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'FOREACH', 'IN', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR', 'ADD_STORE', 'REMOVE_STORE','TRUE','FALSE')
+tokens = ('ID', 'LPAREN', 'DEF', 'IMPLY', 'LAMDA', 'COMMENT', 'RPAREN', 'STRING', 'SQRBEGIN', 'SQREND', 'CURLBEGIN', 'CURLEND', 'NUMBER', 'IF', 'ELSE', 'COMMA', 'GR', 'LS', 'NODE', 'GRAPH','GRAPHTYPE', 'CONNECTOR', 'NEW', 'NEWLINE', 'DOT', 'WHILE', 'FOR', 'FOREACH', 'IN', 'HAS', 'ON', 'COLON', 'GRTEQ','LESSEQ','EQUAL','NEQUAL','LOGAND','LOGOR', 'ADD_STORE', 'REMOVE_STORE','TRUE','FALSE')
 literals = [';', '=', '+', '-', '*', '/', '%']
 
 t_GR = r'\>'
@@ -208,6 +208,10 @@ def t_newline(t):
     t.type = "NEWLINE"
     if t.lexer.paren_count == 0:
         return t
+
+def t_COMMENT(t):
+    r'/\*.*?\*/'
+    t.lexpos += len(t.value)
 
 def t_WHITESPACE(t):
     r'\s+'
