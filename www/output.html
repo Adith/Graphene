@@ -498,9 +498,6 @@
                                 .style('stroke', 'rgba(100, 100, 100, 0.2)')
                                 .style('cursor', 'pointer')
                                 .on('mouseover', function(d, i) {
-                                    // d3.select(this)
-                                    //     .attr('r', sizeForNode(i) + 5)
-                                    //     .style('fill', '#a00');
                                     
                                     $("image").each(function(i){
                                         $(this).attr("class", $(this).attr("class")+" blur");
@@ -511,14 +508,11 @@
                                 })
                                 .on('mouseout', function(d, i) {
                                     hideDetails(d,i);
+                                    d3.select('#who').text('');
                                     $("image").each(function(i){
                                         $(this).attr("class", $(this).attr("class").replace("blur","").replace("focus",""));
                                     });
                                     
-                                    // d3.select(this)
-                                    //     .attr('r', sizeForNode(i))
-                                    //     .style('fill', '#aaa');
-                                    d3.select('#who').text('');
                                 })
                                 .call(force.drag);
 

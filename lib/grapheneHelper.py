@@ -14,6 +14,13 @@ ids=lib.modified_dict()
 def gexit(errorCode = 0):
     sys.exit(errorCode)
 
+def get_node_from_key_value(value, key=True):
+    for index,node in lib.nodeList.iteritems():
+        if getattr(node,key) == value:
+            return node.id
+    logging.error("Unknown node")
+    gexit()
+
 def gprint(*node):
     logging.debug('******print******')
     for e in node:
@@ -27,7 +34,6 @@ def gprint(*node):
             e.print_data();
             print "}"
         elif isinstance(e,list):
-            print "list"
             for v in e:
                 if isinstance(v, ast.ASTNode):
                     gprint(ast.evaluateAST(v).value)

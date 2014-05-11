@@ -343,7 +343,7 @@ def p_graph(p):
     key.value = "id"
 
     if(len(p) == 9):
-        key.value = p[8]
+        key.value = p[8].children[0]
 
     node.children.append(gid)
     node.children.append(gtype)

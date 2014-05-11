@@ -119,13 +119,22 @@ class Graph:
 	def __init__(self, edgeList = None, gtype = 'd', gkey = "id"):
 		global globalLastGraphIDVal
 		
+		gkey = gkey.value # Fix, because this is an ASTNode. :/
 		self.id = globalLastGraphIDVal + 1
 		globalLastGraphIDVal = globalLastGraphIDVal + 1
 
 		if edgeList is not None:
-			self.edgeList = dict.copy(edgeList)
+			import grapheneHelper as helper
+			# self.edgeList = dict.copy(edgeList)
 			for source, destinations in edgeList.iteritems():
 				for destination, properties in destinations.iteritems():
+					destination = helper.get_node_from_key_value(destination, gkey)
+					source = helper.get_node_from_key_value(source, gkey)
+					try:
+						self.edgeList[source][destination] = properties
+					except KeyError, e:
+						self.edgeList[source] = { destination : properties }
+
 					try:
 						self.shadowEdgeList[destination][source] = None
 					except KeyError, e:
