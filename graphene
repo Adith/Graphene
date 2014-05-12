@@ -42,6 +42,8 @@ else
       h)
         echo "Help is at hand." >&2
         echo "OPTIONS"
+        echo -e -n "\t-h"
+        echo -e "\tShow this Help and start Interpreter"
         echo -e -n "\t-f"
         echo -e "\tFile to read source from"
         echo -e "\t\tUsage: graphene -f <path>"
