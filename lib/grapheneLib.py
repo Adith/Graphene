@@ -243,25 +243,37 @@ class Graph:
 			return False
 
 	def inDegree(self, node):
-		node_id = node[0].id
+		if isinstance(node,list):
+			node_id = node[0].id
+		else:
+			node_id = node
+
 		try:
 			return len(self.shadowEdgeList[node_id].keys())
 		except Exception, e:
 			return 0
 
 	def outDegree(self, node):
-		node_id = node[0].id
+		if isinstance(node,list):
+			node_id = node[0].id
+		else:
+			node_id = node
+
 		try:
 			return len(self.edgeList[node_id].keys())
 		except Exception, e:
 			return 0
 
 	def degree(self, node):
-		node_id = node[0].id
-		if self.graph_type == "d":
-			return len(self.edgeList[node_id].keys()) + len(self.shadowEdgeList[node_id].keys())
+		if isinstance(node,list):
+			node_id = node[0].id
 		else:
-			return len(self.edgeList[node_id].keys())
+			node_id = node
+
+		if self.graph_type == "d":
+			return self.inDegree(node_id) + self.outDegree(node_id)
+		else:
+			return self.outDegree(node_id)
 
 	def getAdjacent(self, node):
 		adjacent = modified_list()

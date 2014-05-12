@@ -1,6 +1,6 @@
 person has name,city,picture;
-graph = input("person","data/1.edges");
-g = input("person","data/1.edges");
+graph = input("person","data/0.edges");
+
 
 def (graph) => getNodeWithMaxDegree
 {
@@ -32,6 +32,7 @@ def (graph) => GlobalReach
     };
 } => (Nodes);
 
+g = input("person","data/0.edges");
 l = GlobalReach(graph);
 
 output().overlay(l);
