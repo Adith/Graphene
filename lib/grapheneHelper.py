@@ -31,6 +31,7 @@ def gprint(*node):
             e.print_data();
         elif isinstance(e, lib.Graph):
             print "Graph has {"
+
             e.print_data();
             print "}"
         elif isinstance(e,list):
@@ -116,7 +117,7 @@ def ginput(*args):
     elif len(args)==0:
         input = json.loads(gui.input())
         lib.graphList[len(lib.graphList)] = lib.Graph(outToInLinks(input['links']))
-
+        print input["nodes"][0]
         # Unfortunately, we have to decide whether to create a template node class or one for EVERY node in input. This one does the former.
         template_node_class = type("template", (lib.Node,), dict(((k,None) for k,v in input["nodes"][0].iteritems()),__init__=lib.node_init, print_data=lambda self:lib.Node.print_data(self), get_data= lambda self: lib.Node().get_data(self), mapping=dict((i,el) for i,el in enumerate(input["nodes"][0]))))
     
@@ -139,7 +140,6 @@ def goutput(graph=None, isChained=False):
     # Dump state to json
     nodes = []
     graphs = []
-
     if graph == None:
         nodes = inToOutNodes(lib.nodeList)
         for k,g in lib.graphList.iteritems():
@@ -274,7 +274,57 @@ def gcluster(graph,lamda):
         print nod.get_data()
     return clusters
 
-func_map = {'input' : ginput, 'output' : goutput,  'print' : gprint, 'exit': gexit, 'cluster': gcluster}
+
+def gmesh(total_nodes, node_type):
+    try:
+        f = open("data/random_profiles",'r')
+    except Exception, e:
+        logging.error("random_profiles Not Found.")
+        gexit()
+
+    random_profiles = json.loads(f.read())
+    f.close()
+
+    for i in range(total_nodes):
+
+        random_profile = random_profiles[random.randint(0,539)]['user']
+        
+        profile_attributes = []
+
+        
+        for a in inspect.getmembers(func_map[node_type], lambda a:not(inspect.isroutine(a))):
+            if (a[0]=="mapping"):
+                for k,v in a[1].iteritems():
+                    if v == "name":
+                       profile_attributes.append(random_profile[v]["first"] + " " + random_profile[v]["last"])    
+                    elif v == "city":
+                       profile_attributes.append(random_profile["location"]["city"])    
+                    else:
+                       profile_attributes.append(random_profile[v])
+                break
+        newNode = func_map[node_type](*profile_attributes)
+        setattr(newNode,"__tags__"," ")
+        setattr(newNode,"__cluster__",None)
+        lib.nodeList[len(lib.nodeList)]=newNode
+  
+    gid = ast.ASTNode()
+    gid.type = "terminal"
+    gid.value = "id"
+    
+    edges = {}
+    allnodes = [nodes for nodes in lib.nodeList.keys()]
+    for start in allnodes:
+        for dst in allnodes:
+            if start!=dst:
+                try:
+                 edges[start][dst] = {'__connector__':'->'}
+                except KeyError:
+                   edges[start] = {dst:{'__connector__':'->'}}
+    new_graph = lib.Graph(edges, 'd', gid)
+    lib.graphList[lib.globalLastGraphIDVal] = new_graph
+    return new_graph
+
+func_map = {'input' : ginput, 'output' : goutput,  'print' : gprint, 'exit': gexit, 'cluster': gcluster, 'mesh': gmesh}
 
 
 def scope_in():

@@ -249,8 +249,8 @@
                     .start();
 
                 var svg = d3.select("body").append("svg")
-                    .attr("width", width)
-                    .attr("height", height);
+                    .attr("width", window.innerWidth-15)
+                    .attr("height", window.innerHeight-15);
 
                 var node = svg.selectAll("circle")
                     .data(nodes)

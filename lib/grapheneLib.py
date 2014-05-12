@@ -119,6 +119,7 @@ class Graph:
 	
 	def __init__(self, edgeList = None, gtype = 'd', gkey = "id"):
 		global globalLastGraphIDVal
+
 		
 		if(isinstance(gkey, ast.ASTNode)):
 			gkey = gkey.value # Fix, because this is an ASTNode. :/
