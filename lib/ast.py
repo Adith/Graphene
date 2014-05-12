@@ -77,6 +77,7 @@ def evaluateAST(a, lineno= "unknown", chained= False):
 
     if a.type == "lamdaassign":
         function[a.children[0]]=a.children[1]
+
         helper.ids[a.children[0]]=a.children[1]
         #print ("Assigning ",a.children[0]," a value of ",a.children[1])
         #print function
@@ -749,7 +750,6 @@ def evaluateAST(a, lineno= "unknown", chained= False):
 
     if(a.type == "graph-dec"):
         logging.debug('-----eval: graph-dec----')
-        print evaluateAST(a.children[3], lineno)
         new_graph = lib.Graph(evaluateAST(a.children[3], lineno), evaluateAST(a.children[1], lineno), evaluateAST(a.children[2], lineno))
         lib.graphList[lib.globalLastGraphIDVal] = new_graph
 

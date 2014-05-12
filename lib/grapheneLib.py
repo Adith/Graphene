@@ -374,8 +374,9 @@ class Graph:
 	 
 	    for arg in fargs:
 	        node0 = ast.ASTNode()
-	        node0.type = "id"
-	        node0.children.append(arg.get_data()['name'])
+	        node0.type = "terminal"
+	        node0.value=arg
+	        #node0.children.append(arg.get_data()['name'])
 	        arglistNode.children.append(node0)
 
 	    node.children.append(arglistNode)
@@ -385,10 +386,7 @@ class Graph:
 	    global chained
 	    import grapheneHelper as helper
 	    clusters = []
-	    print '<<<<'
-	    for n in nodeList.keys():
-	        print n,nodeList[n].__cluster__
-	    print '>>>>'
+	    
 	    nodes = self.getNodes()
 	  
 	    if ast.evaluateAST(self.mockFuncCall(lamda.children[3],[nodes[0],nodes[1]])).value:
@@ -419,7 +417,6 @@ class Graph:
 	    #print '+++++',len(clusters),'++++++'
 
 	    index=0
-	    print self.getNodes()
 	    for cluster in clusters:
 	        for node in cluster: 
 	            #print lib.nodeList[node.get_data()['id']].get_data()
@@ -427,15 +424,6 @@ class Graph:
 	            node.__cluster__=index
 	        index+=1
 	    #print nodeList
-	    
-	    print '<<<<'
-	    for n in nodeList.keys():
-	        print n,nodeList[n].__cluster__
-	    print '>>>>'
-
-	    print '++++',self,'++++'
-	    for nod in self.getNodes():
-	        print nod.get_data()
 	    
 	    if chained:
 	    	helper.goutput(self)

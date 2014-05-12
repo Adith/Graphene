@@ -181,8 +181,9 @@ def mockFuncCall(fname,fargs):
  
     for arg in fargs:
         node0 = ast.ASTNode()
-        node0.type = "id"
-        node0.children.append(arg.get_data()['name'])
+        node0.type = "terminal"
+        # node0.children.append(arg.get_data()['name'])
+        node0.value = arg
         arglistNode.children.append(node0)
 
     node.children.append(arglistNode)
