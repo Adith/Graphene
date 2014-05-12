@@ -14,7 +14,7 @@ ids=lib.modified_dict()
 def gexit(errorCode = 0):
     sys.exit(errorCode)
 
-def get_node_from_key_value(value, key=True):
+def get_node_id_from_key_value(value, key="id"):
     for index,node in lib.nodeList.iteritems():
         if getattr(node,key) == value:
             return node.id
