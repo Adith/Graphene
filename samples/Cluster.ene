@@ -1,0 +1,5 @@
+person has name,city,picture;
+graph = input("person","data/0.edges");
+l = lambda (n1,n2):{x=0; 
+if(n1.["city"]==n2.["city"]){x=1;}; }=>(x);
+graph.cluster(l);
