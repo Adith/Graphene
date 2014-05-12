@@ -366,6 +366,7 @@ def evaluateAST(a, lineno= "unknown", chained= False):
 
     if(a.type == "removenode"):
         logging.debug("------noderemoval-----")
+        
         links =  helper.ids[a.children[0]].get_data()
         shadow = helper.ids[a.children[0]].get_shadow()
         
@@ -402,6 +403,7 @@ def evaluateAST(a, lineno= "unknown", chained= False):
                 shadow.pop(p, None)
         helper.ids[a.children[0]].edgeList=links
         helper.ids[a.children[0]].shadowEdgeList=shadow
+        
         return helper.ids[a.children[0]]
 
     if(a.type == "lookupnode"):

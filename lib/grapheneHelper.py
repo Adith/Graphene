@@ -139,6 +139,7 @@ def goutput(graph=None, isChained=False):
     # Dump state to json
     nodes = []
     graphs = []
+
     if graph == None:
         nodes = inToOutNodes(lib.nodeList)
         for k,g in lib.graphList.iteritems():

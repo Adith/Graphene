@@ -568,7 +568,7 @@ def p_edgeexpression(p):
     p[0] = node
 
 def p_node_removal_expression(p):
-    '''noderemoval : ID REMOVE_STORE nodeLookup'''
+    '''noderemoval : ID REMOVE_STORE idOrAlphanum'''
     logging.debug("-------In noderemoval-------")
     node = ast.ASTNode()
     node.type = "removenode"

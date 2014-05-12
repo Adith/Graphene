@@ -120,14 +120,19 @@ class Graph:
 	def __init__(self, edgeList = None, gtype = 'd', gkey = "id"):
 		global globalLastGraphIDVal
 		
-		gkey = gkey.value # Fix, because this is an ASTNode. :/
+		if(isinstance(gkey, ast.ASTNode)):
+			gkey = gkey.value # Fix, because this is an ASTNode. :/
+		if(isinstance(gtype, ast.ASTNode)):
+			gtype = gtype.value # Fix, because this is an ASTNode. :/
+		
 		self.id = globalLastGraphIDVal + 1
 		self.graph_type = gtype
 		globalLastGraphIDVal = globalLastGraphIDVal + 1
 
 		if edgeList is not None:
+			
 			import grapheneHelper as helper
-			# self.edgeList = dict.copy(edgeList)
+			self.edgeList = dict.copy(edgeList)
 			for source, destinations in edgeList.iteritems():
 				for destination, properties in destinations.iteritems():
 					destination = helper.get_node_from_key_value(destination, gkey)
@@ -143,7 +148,7 @@ class Graph:
 						self.shadowEdgeList[destination] = { source : None }
 
 					
-					if(gtype.value != "d"):
+					if(gtype != "d"):
 						try:
 							self.edgeList[destination][source] = properties
 						except KeyError, e:
@@ -155,32 +160,37 @@ class Graph:
 							self.shadowEdgeList[source] = { destination : None }
 
 	def overlay(self, overlay_list=None):
-		overlay_node_list = []
-		if overlay_list:
-			if isinstance(overlay_list, ast.ASTNode):
-				for e in overlay_list.value:
-					if e.__class__.__bases__[0].__name__ in ["Node"]:
-						overlay_node_list.append(e.id)
-					else:	
-						overlay_node_list.append(e.value)
+		try:
+			overlay_node_list = []
+			if overlay_list:
+				if isinstance(overlay_list, ast.ASTNode):
+					for e in overlay_list.value:
+						if e.__class__.__bases__[0].__name__ in ["Node"]:
+							overlay_node_list.append(e.id)
+						else:	
+							overlay_node_list.append(e.value)
+				else:
+					overlay_node_list.append(overlay_list.id)
 			else:
-				overlay_node_list.append(overlay_list.id)
-		else:
+				gui.output()
+				return
+
+			state = json.loads(open('./proc/state.json', 'r').read())
+			node_ref = {}
+			for node in state["nodes"]:
+				node_ref[node["id"]] = node
+
+			for node_id in overlay_node_list:
+				node_ref[node_id]["__tags__"] = node_ref[node_id]["__tags__"] + "active"
+			state["attributes"] = {"overlay":True}
+			with open('./proc/state.json', 'w') as outfile:
+				json.dump(state, outfile)
+
 			gui.output()
-			return
-
-		state = json.loads(open('./proc/state.json', 'r').read())
-		node_ref = {}
-		for node in state["nodes"]:
-			node_ref[node["id"]] = node
+		except Exception, e:
+			import traceback
+			traceback.print_exc()
 		
-		for node_id in overlay_node_list:
-			node_ref[node_id]["__tags__"] = node_ref[node_id]["__tags__"] + "active"
-		state["attributes"] = {"overlay":True}
-		with open('./proc/state.json', 'w') as outfile:
-			json.dump(state, outfile)
-
-		gui.output()
 
 	def get_id(self):
 		return self.id
@@ -255,7 +265,8 @@ class Graph:
 
 	def getAdjacent(self, node):
 		adjacent = modified_list()
-		node =  ast.evaluateAST(node)[0]
+		if(isinstance(node,list)):
+			node =  ast.evaluateAST(node)[0]
 		if node.id in self.shadowEdgeList:
 			for adjacent_id in self.shadowEdgeList[node.id]:
 				adjacent.append(nodeList[adjacent_id])
