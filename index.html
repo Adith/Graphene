@@ -34,7 +34,7 @@
 <a name="graphene" class="anchor" href="#graphene"><span class="octicon octicon-link"></span></a>Graphene</h1>
 
 <h6>
-<a name="social-network-graph-language-compiler" class="anchor" href="#social-network-graph-language-compiler"><span class="octicon octicon-link"></span></a>social network graph language compiler</h6>
+<a name="social-network-graph-language-interpreter" class="anchor" href="#social-network-graph-language-interpreter"><span class="octicon octicon-link"></span></a>social network graph language interpreter</h6>
 
 <p>Graphene makes graph manipulation and social network data analysis convenient using a purpose-built interpreted programming language.
 The motivation for our language is the massive commonplace use of graphs and graph based data mining algorithms in today's
@@ -45,7 +45,7 @@ manage a large backend of data which can usually be represented using a graph st
 and management. Graphene will provide this interface to be able to support generic graph algorithms as well as specific
 social network applications based computations on graph-like data structures.</p>
 
-
+<hr>
 <h2>
 <a name="examples" class="anchor" href="#examples"><span class="octicon octicon-link"></span></a>Usage</h2>
 
@@ -72,6 +72,7 @@ social network applications based computations on graph-like data structures.</p
 <p><code>./graphene -f samples/graph.ene</code>
 <br>      Interpret source from a file on disk. File path is from CWD.</p>
 
+<hr>
 <h2>
 <a name="look-and-feel" class="anchor" href="#look-and-feel"><span class="octicon octicon-link"></span></a>In Action!</h2>
 
@@ -89,16 +90,9 @@ Profile attributes generated at <a href="randomuser.me">pseudo-random</a>.</p>
   </code>
 </pre>
 
-To run:
-<pre>
-  <code>
-  ./graphene -f samples/GlobalReach.ene
-  </code>
-</pre>
-
 <p>The program above illustrates ease of use to handle large graphs.</p>
 <h6>
-<a class="anchor" href="samples/output_stock_features.html" target="_blank"><span class="octicon octicon-link"></span></a><p>See this in action</p>
+<a class="anchor" href="samples/output_stock_features.html" target="_blank"><span class="octicon octicon-link"></span></a>See this in action
 </h6>
 
 <p><img src="https://raw.githubusercontent.com/Adith/Graphene/master/Assets/Profile_Card.png" alt="Standard View with Profile Card"></p>
@@ -106,20 +100,10 @@ To run:
 <hr><h4>
 <a name="mesh-creation-and-output" class="anchor" href="#mesh-creation-and-output"><span class="octicon octicon-link"></span></a>Mesh creation and output:</h4>
 
-<p>from <code>person has name,city, picture; output(mesh(20, “person”));</code></p>
-<br>
+From:
 <pre>
   <code>
-  person has name,city,picture;
-  graph = input(20,"person");
-  output();
-  </code>
-</pre>
-
-To run:
-<pre>
-  <code>
-  ./graphene 
+  $ ./graphene 
   graphene> person has name,city,picture;
   graphene> graph = mesh(20, "person");
   graphene> output();
@@ -135,7 +119,58 @@ To run:
 <hr><h4>
 <a name="graph-view-with-overlaid-nodes-highlighted-nodes-represent-a-global-reach" class="anchor" href="#graph-view-with-overlaid-nodes-highlighted-nodes-represent-a-global-reach"><span class="octicon octicon-link"></span></a>Graph View with overlaid nodes. Highlighted nodes represent a Global Reach.</h4>
 
-<p>from <code>output().overlay(graph.GlobalReach());</code></p>
+<p>GlobalReach.ene:</p>
+<pre>
+  <code>
+    person has name,city,picture;
+    graph = input("person","data/0.edges");
+    
+    
+    def (graph) => getNodeWithMaxDegree
+    {
+        maxnode = graph.getNodes().first();
+        maxdegree = graph.getAdjacent(graph.getNodes().first()).length();
+        foreach(node in graph.getNodes())
+        {     
+             curr = graph.getAdjacent(node).length();
+             if(curr > maxdegree)
+             {
+               maxnode = node;
+               maxdegree = curr;
+             };
+        };
+    } => (maxnode);
+    
+    def (graph) => GlobalReach
+    {
+        Nodes = [];
+        while(graph.getNodes().length()!=0)
+        {
+            current = getNodeWithMaxDegree(graph);
+            Nodes.append(current);
+            foreach(node in graph.getAdjacent(current))
+            {
+                graph -= node;
+            };
+            graph -= current;
+        };
+    } => (Nodes);
+    
+    g = input("person","data/0.edges");
+    l = GlobalReach(graph);
+    
+    output();    
+  </code>
+</pre>
+
+To Run:
+<pre>
+  <code>
+    $ ./graphene -f samples/GlobalReach.ene
+  </code>
+</pre>
+
+This short, yet powerful program finds a (greedy) transitive closure of the graph that represents the small set of nodes that have Global Reach, calculated by 1 degree connectedness.
 <br>
 <a href="samples/output_overlay.html" target="_blank"><p>See this in action</p></a>
 
