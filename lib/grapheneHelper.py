@@ -85,7 +85,7 @@ def ginput(*args):
                     if v == "name":
                         profile_attributes.append(random_profile[v]["first"] + " " + random_profile[v]["last"])    
                     elif v == "city":
-                        profile_attributes.append(random_profile["location"]["city"])    
+                        profile_attributes.append(random_profile["location"]["city"] + ", " + random_profile["location"]["state"])    
                     else:
                         profile_attributes.append(random_profile[v])
 
@@ -98,7 +98,7 @@ def ginput(*args):
                     if v == "name":
                         profile_attributes.append(random_profile[v]["first"] + " " + random_profile[v]["last"])    
                     elif v == "city":
-                        profile_attributes.append(random_profile["location"]["city"])    
+                        profile_attributes.append(random_profile["location"]["city"] + ", " + random_profile["location"]["state"])    
                     else:
                         profile_attributes.append(random_profile[v])
 

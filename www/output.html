@@ -229,7 +229,6 @@
                   return d;
                 });
 
-                    console.log(nodes);
                 // Use the pack layout to initialize node positions.
                 d3.layout.pack()
                     .sort(null)
@@ -510,7 +509,8 @@
                                     hideDetails(d,i);
                                     d3.select('#who').text('');
                                     $("image").each(function(i){
-                                        $(this).attr("class", $(this).attr("class").replace("blur","").replace("focus",""));
+                                        if ($(this).attr("class") != undefined)
+                                            $(this).attr("class", $(this).attr("class").replace("blur","").replace("focus",""));
                                     });
                                     
                                 })
