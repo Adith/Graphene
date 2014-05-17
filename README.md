@@ -1,5 +1,5 @@
 # Graphene
-###### social network graph language compiler
+###### social network graph language interpreter
 
 Check out live code samples [here](http://adith.github.io/Graphene/)!
 
@@ -37,6 +37,4 @@ Usage: `./graphene (test [-t <number>| -i] | -f <file_path> | -h | -d)`
 <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Interpret source from a file on disk. File path is from CWD.
 
 
-         
-         
 Silent graph analyst by day, vigilante graph ninja by night [-_-]~
