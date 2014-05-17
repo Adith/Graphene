@@ -45,6 +45,10 @@ manage a large backend of data which can usually be represented using a graph st
 and management. Graphene will provide this interface to be able to support generic graph algorithms as well as specific
 social network applications based computations on graph-like data structures.</p>
 
+
+<h2>
+<a name="examples" class="anchor" href="#examples"><span class="octicon octicon-link"></span></a>Usage</h2>
+
 <p>Usage: <code>./graphene (test [-t &lt;number&gt;| -i] | -f &lt;file_path&gt; | -h | -d)</code></p>
 
 <pre><code>Options:
@@ -55,9 +59,6 @@ social network applications based computations on graph-like data structures.</p
   -h                    Show help message and exit
   -d                    See under the hood. Use with caution!
 </code></pre>
-
-<h2>
-<a name="examples" class="anchor" href="#examples"><span class="octicon octicon-link"></span></a>Examples</h2>
 
 <p><code>./graphene test</code>
 <br>      Run all built-in tests</p>
@@ -72,19 +73,33 @@ social network applications based computations on graph-like data structures.</p
 <br>      Interpret source from a file on disk. File path is from CWD.</p>
 
 <h2>
-<a name="look-and-feel" class="anchor" href="#look-and-feel"><span class="octicon octicon-link"></span></a>Look and Feel</h2>
+<a name="look-and-feel" class="anchor" href="#look-and-feel"><span class="octicon octicon-link"></span></a>In Action!</h2>
 
 <h4>
 <a name="standard-graph-view-with-profile-card" class="anchor" href="#standard-graph-view-with-profile-card"><span class="octicon octicon-link"></span></a>Standard graph view with profile card:</h4>
 
-<h6>
-<a name="from-output" class="anchor" href="#from-output"><span class="octicon octicon-link"></span></a>from <code>output();</code>
-</h6>
-
-<p>Sample anonymized facebook data set shown here, courtesy <a href="snap.stanford.edu/data/egonets-Facebook.html">Stanford University</a>.<br>
+<p>Real anonymized facebook data set shown here, courtesy <a href="snap.stanford.edu/data/egonets-Facebook.html">Stanford University</a>.<br>
 Profile attributes generated at <a href="randomuser.me">pseudo-random</a>.</p>
 <br>
-<a href="samples/output_stock_features.html" target="_blank"><p>See this in action</p></a>
+<pre>
+  <code>
+  person has name,city,picture;
+  graph = input("person","data/0.edges");
+  output();
+  </code>
+</pre>
+
+To run:
+<pre>
+  <code>
+  ./graphene -f samples/GlobalReach.ene
+  </code>
+</pre>
+
+<p>The program above illustrates ease of use to handle large graphs.</p>
+<h6>
+<a class="anchor" href="samples/output_stock_features.html" target="_blank"><span class="octicon octicon-link"></span></a><p>See this in action</p>
+</h6>
 
 <p><img src="https://raw.githubusercontent.com/Adith/Graphene/master/Assets/Profile_Card.png" alt="Standard View with Profile Card"></p>
 
@@ -93,6 +108,26 @@ Profile attributes generated at <a href="randomuser.me">pseudo-random</a>.</p>
 
 <p>from <code>person has name,city, picture; output(mesh(20, “person”));</code></p>
 <br>
+<pre>
+  <code>
+  person has name,city,picture;
+  graph = input(20,"person");
+  output();
+  </code>
+</pre>
+
+To run:
+<pre>
+  <code>
+  ./graphene 
+  graphene> person has name,city,picture;
+  graphene> graph = mesh(20, "person");
+  graphene> output();
+  graphene> exit();
+  </code>
+</pre>
+
+<p>This starts the user off with a mesh graph (every node connected to every other node). Helps ease work with highly connected graphs, which can be formed by removing appropriate edges.</p>
 <a href="samples/output_mesh.html" target="_blank"><p>See this in action</p></a>
 
 <p><img src="https://raw.githubusercontent.com/Adith/Graphene/master/Assets/Mesh.png" alt="Mesh"></p>
