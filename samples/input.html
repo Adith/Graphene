@@ -1,0 +1,90 @@
+<html>
+<head>
+<link href='http://fonts.googleapis.com/css?family=Lato:900' rel='stylesheet' type='text/css'>
+</head>
+<body>
+<div class="logo">Graphene</div>
+<div>
+    <button id="copy-button"></button>
+    <table id="state-table">
+    	<thead>
+    		<td>ID</td>
+    		<td>Name</td>
+    	</thead>
+    </table>
+</div>
+<script src="javascript/jquery.min.js"></script>
+<script type="text/javascript" src="javascript/d3.v3.min.js"></script>
+<script src="javascript/app.js"></script>
+<script src="javascript/ZeroClipboard.min.js"></script>
+
+ 
+<script type="text/javascript">
+var client, result = {};
+
+function populateStateTable() {
+	var table = document.getElementById("state-table");
+	var row, clmn1, clmn2;
+	$(nodes).each(function(i,e) {
+		row = table.insertRow(-1);
+		clmn1 = row.insertCell(-1);
+		clmn2 = row.insertCell(-1);
+		clmn1.innerHTML = i;
+		clmn2.innerHTML = e["name"];
+	});
+}
+
+$(document).ready(function() {
+
+	populateStateTable();
+	if(window.location.search.substring(1) == "static") {
+		$('#copy-button').text("Exit");
+		$('#copy-button').click(function(){
+			open(location, '_self').close();
+		});
+	}
+	else {
+		$('#copy-button').text("Process");
+		client = new ZeroClipboard( document.getElementById("copy-button"), {
+        moviePath: "images/ZeroClipboard.swf"
+    });
+
+client.on( "load", function( readyEvent ) {
+
+	client.on( 'mouseover', function (event) {
+		linksCopy = JSON.parse(JSON.stringify(links));
+		nodesCopy = JSON.parse(JSON.stringify(nodes));
+
+		$.each(linksCopy, function(index, value){
+			source = value['source']['id'];
+			target = value['target']['id'];
+			value['source'] = source;
+			value['target'] = target;
+		});
+		$.each(nodesCopy, function(index, value){
+			delete value['index'];
+			delete value['px'];
+			delete value['py'];
+			delete value['x'];
+			delete value['y'];
+			delete value['weight'];
+		});
+
+		result['nodes'] = nodesCopy;
+		result['links'] = linksCopy;
+  		$('#copy-button').attr('data-clipboard-text', JSON.stringify(result));
+		});
+
+		client.on( "complete", function( event ) {
+		window.close();
+  });
+});
+}
+});
+
+</script>
+<link rel="stylesheet" type="text/css" href="css/app.css"/>
+<link rel="stylesheet" type="text/css" href="css/foundation.min.css">
+
+</body>
+</html>

@@ -1,0 +1,95 @@
+body {
+        background: radial-gradient(ellipse at center, #7db9e8 0%,#113056 100%) !important;
+}
+
+table {
+
+    bottom: 0;   
+    left: 0;   
+    margin: auto !important;   
+    position: absolute;   
+    top: 0;   
+}
+
+.logo {
+  position: fixed;
+  font-family: 'Lato', 'sans-serif';
+  font-size: xx-large;
+  font-weight: 800;
+  color: rgba(255,255,255,0.25);
+  right: 20px;
+  bottom: 20px;
+}
+
+.clearfix:after {
+    content: ".";
+    display: block;
+    height: 0;
+    clear: both;
+    visibility: hidden;
+}
+
+.clearfix {display: inline-block;}  /* for IE/Mac */
+
+svg {
+  background-color: rgba(255,255,255,0);
+  cursor: default;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -o-user-select: none;
+  user-select: none;
+}
+
+svg:not(.active):not(.ctrl) {
+  cursor: crosshair;
+}
+
+button {
+bottom: 0px;
+position: fixed !important;
+margin-left: 42.5% !important;  
+}
+
+path.link {
+  fill: none;
+  stroke: rgba(231,231,231,0.5);
+  stroke-width: 4px;
+  cursor: default;
+}
+
+svg:not(.active):not(.ctrl) path.link {
+  cursor: pointer;
+}
+
+path.link.selected {
+  stroke-dasharray: 10,2;
+}
+
+path.link.dragline {
+  pointer-events: none;
+}
+
+path.link.hidden {
+  stroke-width: 0;
+}
+
+circle.node {
+  stroke-width: 1.5px;
+  cursor: pointer;
+}
+
+circle.node.reflexive {
+  stroke: #000 !important;
+  stroke-width: 2.5px;
+}
+
+text {
+  font: 12px sans-serif;
+  pointer-events: none;
+}
+
+text.id {
+  text-anchor: middle;
+  font-weight: bold;
+}
