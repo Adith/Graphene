@@ -46,6 +46,10 @@ table {
 	border-spacing: 0;
 }
 
+small {
+  font-size: x-small;
+}
+
 /* LAYOUT STYLES */
 body {
   font-size: 15px;
@@ -154,6 +158,10 @@ aside a.button {
   background: transparent url(../images/download-button.png) 0 0 no-repeat;
   margin-bottom: 20px;
   font-size: 21px;
+}
+
+.report {
+  background: transparent url(../images/report-button.png) 0 0 no-repeat !important;
 }
 
 code, pre {
