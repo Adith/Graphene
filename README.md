@@ -1,6 +1,7 @@
 # Graphene
-###### social network graph language compiler
-Silent graph analyst by day, vigilante graph ninja by night [-_-]~
+###### social network graph language interpreter
+
+Check out live code samples [here](http://adith.github.io/Graphene/)!
 
 Graphene makes graph manipulation and social network data analysis convenient using a purpose-built interpreted programming language.
 The motivation for our language is the massive commonplace use of graphs and graph based data mining algorithms in today's
@@ -34,3 +35,6 @@ Usage: `./graphene (test [-t <number>| -i] | -f <file_path> | -h | -d)`
 
 `./graphene -f samples/graph.ene`
 <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Interpret source from a file on disk. File path is from CWD.
+
+
+Silent graph analyst by day, vigilante graph ninja by night [-_-]~
