@@ -138,9 +138,36 @@
             #next_link:hover {
                 opacity: 1.0;
             }
+
+            .node {
+              cursor: pointer;
+            }
+            
+            .node:hover {
+              stroke: #000;
+              stroke-width: 1.5px;
+            }
+            
+            .node--leaf {
+              fill: white;
+            }
+            
+            .label {
+              font: 11px "Helvetica Neue", Helvetica, Arial, sans-serif;
+              text-anchor: middle;
+              text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff, 0 -1px 0 #fff;
+            }
+            
+            .label,
+            .node--root,
+            .node--leaf {
+              pointer-events: none;
+            }
+
+
         </style>
     </head>
-    <body onload="next()">
+    <body onload="dispatch()">
         <div id="fb-root"></div>
         <div id="graph" style="display: none">
             <div id="who"></div>
@@ -151,41 +178,56 @@
         <div class="logo">Graphene</div>
 
         <script type="text/javascript">
+
+  var tooltipId = tooltipId;
+  $("body").append("<div class='tooltip' id='"+tooltipId+"'></div>");
+
+    $("#"+tooltipId).css("width", "300px");
+
+  function hideTooltip(){
+    $("#"+tooltipId).hide();
+  }
+
+  hideTooltip();
+
+  function showTooltip(content, event) {
+    $("#"+tooltipId).html(content);
+    $("#"+tooltipId).show();
+
+    updatePosition(event);
+  }
+
+  function updatePosition(event){
+    var ttid = "#"+tooltipId;
+    var xOffset = 20;
+    var yOffset = 10;
+
+    var toolTipW = $(ttid).width();
+    var toolTipeH = $(ttid).height();
+    var windowY = $(window).scrollTop();
+    var windowX = $(window).scrollLeft();
+    var curX = event.pageX;
+    var curY = event.pageY;
+    var ttleft = ((curX) < $(window).width() / 2) ? curX - toolTipW - xOffset*2 : curX + xOffset;
+    if (ttleft < windowX + xOffset){
+      ttleft = windowX + xOffset;
+    } 
+    var tttop = ((curY - windowY + yOffset*2 + toolTipeH) > $(window).height()) ? curY - toolTipeH - yOffset*2 : curY + yOffset;
+    if (tttop < windowY + yOffset){
+      tttop = curY + yOffset;
+    } 
+    $(ttid).css('top', tttop + 'px').css('left', ttleft + 'px');
+  }
+
+
             var tooltip = Tooltip("vis-tooltip", 230);
             var lerp = function(a, b, t) {
                 return a + (b - a) * t;
             };
-            var nodes = [], lastNodeId, links = [], attributes;
+            var node_data = [], lastNodeId, links = [], attributes, node_clusters = {};
 
-            function showDetails(d,i, node) {
-                data = d3.select(node).data()[0];
-                content = "";
-                if(typeof data["name"] != "string") {
-                    data["name"] = data["name"]["first"] + " " + data["name"]["last"];
-                    data["location"] = data["location"]["street"];
-                }
-                content += "<h1 class='main'>" + data["name"] + '</h1>';
-                $.each(Object.keys(data["mapping"]), function(d,i) {
-                    if (data["mapping"][i] != "picture" && data["mapping"][i] != "name") {
-                        content += "<p class='main'>" + data[data["mapping"][i]] + '</p>';
-                    }
-                });
-                d3.select('#who').text(data["name"]);
-                content += "<clipPath id='tooltip-image'><circle cx='106' cy='106' r='75'></circle></clipPath>";
-                if("picture" in data){
-                    content += '<svg width="200px" height="200px"><defs><clipPath id="myClip"><circle r="80" cx="60%" cy="50%"></circle></clipPath></defs><image x="7.5%" width="200" height="200" y="10" xlink:href="'+data["picture"]+'"clip-path="url(#myClip)"></image></svg>';
-                }
-                else {
-                    content += '<svg width="200px" height="200px"><defs><clipPath id="myClip"><circle r="80" cx="60%" cy="50%"></circle></clipPath></defs><image x="7.5%" width="200" height="200" y="10" xlink:href="http://www.columbia.edu/~at2904/default_profile.jpg"clip-path="url(#myClip)"></image></svg>';   
-                }
-                tooltip.showTooltip(content,d3.event);
-            }
-            // # Mouseout function
-            function hideDetails(d,i) {
-                tooltip.hideTooltip();
-            }
-
-            $.ajax({
+            function dispatch() {
+                $.ajax({
                 url: '../proc/state.json',
                 dataType: 'json',
                 async: false,
@@ -194,7 +236,7 @@
                     index = 0;
                     attributes = data.attributes;
                       $.each(data.nodes,function(i,node){
-                            nodes.push(node);
+                            node_data.push(node);
                             mapping[node["id"]] = index;
                             index = index+1;
                           });
@@ -204,124 +246,170 @@
                           }); 
                 }
             });
-
-            var cluster = function() {
-                var width = window.innerWidth - 25,
-                    height = window.innerHeight - 25,
-                    padding = 10, // separation between same-color nodes
-                    clusterPadding = 40, // separation between different-color nodes
-                    maxRadius = 12;
-
-                var n = 200, // total number of nodes
-                    m = 10; // number of distinct clusters
-
-                var color = d3.scale.category10()
-                    .domain(d3.range(m));
-
-                // The largest node for each cluster.
-                var clusters = new Array(m);
-
-                var nodes = d3.range(n).map(function() {
-                  var i = Math.floor(Math.random() * m),
-                      r = 25,
-                      d = {cluster: i, radius: r};
-                  if (!clusters[i] || (r > clusters[i].radius)) clusters[i] = d;
-                  return d;
-                });
-
-                // Use the pack layout to initialize node positions.
-                d3.layout.pack()
-                    .sort(null)
-                    .size([window.innerWidth, window.innerHeight])
-                    .children(function(d) { return d.values; })
-                    .value(function(d) { return d.radius * d.radius; })
-                    .nodes({values: d3.nest()
-                      .key(function(d) { return d.cluster; })
-                      .entries(nodes)});
-
-                var force = d3.layout.force()
-                    .nodes(nodes)
-                    .size([width, height])
-                    .gravity(0.02)
-                    .charge(-30)
-                    .on("tick", tick)
-                    .start();
-
-                var svg = d3.select("body").append("svg")
-                    .attr("width", window.innerWidth-15)
-                    .attr("height", window.innerHeight-15);
-
-                var node = svg.selectAll("circle")
-                    .data(nodes)
-                  .enter().append("circle")
-                    .style("fill", function(d) { return color(d.cluster); })
-                    .call(force.drag);
-
-                node.transition()
-                    .duration(750)
-                    .delay(function(d, i) { return i * 5; })
-                    .attrTween("r", function(d) {
-                      var i = d3.interpolate(0, d.radius);
-                      return function(t) { return d.radius = i(t); };
-                    });
-
-                function tick(e) {
-                  node
-                      .each(cluster(10 * e.alpha * e.alpha))
-                      .each(collide(1))
-                      .attr("cx", function(d) { return d.x; })
-                      .attr("cy", function(d) { return d.y; });
-                }
-
-                // Move d to be adjacent to the cluster node.
-                function cluster(alpha) {
-                  return function(d) {
-                    var cluster = clusters[d.cluster];
-                    if (cluster === d) return;
-                    var x = d.x - cluster.x,
-                        y = d.y - cluster.y,
-                        l = Math.sqrt(x * x + y * y),
-                        r = d.radius + cluster.radius;
-                    if (l != r) {
-                      l = (l - r) / l * alpha;
-                      d.x -= x *= l;
-                      d.y -= y *= l;
-                      cluster.x += x;
-                      cluster.y += y;
-                    }
-                  };
-                }
-
-                // Resolves collisions between d and all other circles.
-                function collide(alpha) {
-                  var quadtree = d3.geom.quadtree(nodes);
-                  return function(d) {
-                    var r = d.radius + maxRadius + Math.max(padding, clusterPadding),
-                        nx1 = d.x - r,
-                        nx2 = d.x + r,
-                        ny1 = d.y - r,
-                        ny2 = d.y + r;
-                    quadtree.visit(function(quad, x1, y1, x2, y2) {
-                      if (quad.point && (quad.point !== d)) {
-                        var x = d.x - quad.point.x,
-                            y = d.y - quad.point.y,
-                            l = Math.sqrt(x * x + y * y),
-                            r = d.radius + quad.point.radius + (d.cluster === quad.point.cluster ? padding : clusterPadding);
-                        if (l < r) {
-                          l = (l - r) / l * alpha;
-                          d.x -= x *= l;
-                          d.y -= y *= l;
-                          quad.point.x += x;
-                          quad.point.y += y;
+                if (attributes["cluster"]) {
+                    node_clusters["name"] = "clusters";
+                    node_clusters["children"] = [];
+                    temp_mapping = {};
+                    $.each(node_data, function(i, node){
+                        cluster = node["__cluster__"];
+                        entry = {};
+                        for (key in node.mapping) {
+                            entry[node["mapping"][key]] = node[node["mapping"][key]];
                         }
-                      }
-                      return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+                        entry["size"] = 1;
+                        entry["mapping"] = node["mapping"];
+                        if (temp_mapping.hasOwnProperty(cluster)) {
+                            temp_mapping[cluster].push(entry);
+                        }
+                        else {
+                            temp_mapping[cluster] = [entry];
+                        }
                     });
-                  };
+                    for (name in temp_mapping) {
+                        node_clusters["children"].push({"name":name, "children":temp_mapping[name]});
+                    }
+                    display_cluster();
                 }
+                else {
+                    display();
+                }
+
             }
 
-            var next = function() {
+            function showDetails(d,i, node) {
+                data = d3.select(node).data()[0];
+                content = "";
+                if(typeof data["name"] != "string") {
+                    data["name"] = data["name"]["first"] + " " + data["name"]["last"];
+                    data["location"] = data["location"]["street"];
+                }
+                content += "<h1 class='main'>" + data["name"] + '</h1>';
+                for(key in data["mapping"]){
+                    if (data["mapping"][key] != "picture" && data["mapping"][key] != "name") {
+                        content += "<p class='main'>" + data[data["mapping"][key]] + '</p>';
+                    }
+                }
+                d3.select('#who').text(data["name"]);
+                content += "<clipPath id='tooltip-image'><circle cx='106' cy='106' r='75'></circle></clipPath>";
+                if("picture" in data){
+                    content += '<svg width="200px" height="200px"><defs><clipPath id="myClip"><circle r="80" cx="60%" cy="50%"></circle></clipPath></defs><image x="7.5%" width="200" height="200" y="10" xlink:href="'+data["picture"]+'"clip-path="url(#myClip)"></image></svg>';
+                }
+                else {
+                    content += '<svg width="200px" height="200px"><defs><clipPath id="myClip"><circle r="80" cx="60%" cy="50%"></circle></clipPath></defs><image x="7.5%" width="200" height="200" y="10" xlink:href="http://www.columbia.edu/~at2904/default_profile.jpg"clip-path="url(#myClip)"></image></svg>';   
+                }
+                showTooltip(content,d3.event);
+            }
+            // # Mouseout function
+            function hideDetails(d,i) {
+                hideTooltip();
+            }
+
+            var zoom = function(d) {
+                    var focus0 = focus; focus = d;
+                    var transition = d3.transition()
+                        .duration(d3.event.altKey ? 7500 : 750)
+                        .tween("zoom", function(d) {
+                          var i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2 + margin]);
+                          return function(t) { zoomTo(i(t)); };
+                        });
+                    var flag = true;
+                    transition.selectAll("image")
+                      .filter(function(d) { if(d == undefined ) {return false;} return d.parent === focus || this.style.display === "inline"; })
+                        .style("fill-opacity", function(d) { return d.parent === focus ? 1 : 0; })
+                        .each("start", function(d) { if (d.parent !== focus) {this.style.display = "none"; flag = false;} else { if(this.style.display != "none"){this.style.display = "none"; flag = false;}} })
+                        .each("end", function(d) {  if (d.parent !== focus){ this.style.display = "none"; } else if(this.style.display != "none"){this.style.display = "none";} else { if(flag) this.style.display = "inline"; flag = true; }});
+                  };
+
+            var zoomTo = function(v) {
+                    var k = window.innerHeight / v[2]; view = v;
+                    node.attr("transform", function(d) { return "translate(" + (d.x - v[0]) * k + "," + (d.y - v[1]) * k + ")"; });
+                    circle.attr("r", function(d) { return d.r * k; });
+                  };
+
+            var display_cluster = function() {
+                var profile_size = 80;
+                
+                
+                  
+                
+                var margin = 50,
+                    diameter = window.innerHeight;
+                
+                var color = d3.scale.linear()
+                    .domain([-1, 5])
+                    .range(["hsl(240,15%,8%)", "hsl(240,45%,35%)"])
+                    .interpolate(d3.interpolateHcl);
+                
+                var pack = d3.layout.pack()
+                    .padding(5)
+                    .size([diameter - margin, diameter - margin])
+                    .value(function(d) { return d.size; });
+                
+                var svg = d3.select("body").append("svg")
+                    .attr("width", window.innerWidth - 15)
+                    .attr("height", window.innerHeight -15)
+                  .append("g")
+                    .attr("transform", "translate(" + window.innerWidth / 2 + "," + window.innerHeight / 2 + ")");
+                
+                var root = node_clusters;
+                  var focus = root,
+                      nodes = pack.nodes(root),
+                      view;
+                node_data = []
+                for (var k in nodes){
+                    if(nodes[k]["picture"]) 
+                        node_data.push(nodes[k]);
+                }
+
+                  var circle = svg.selectAll("circle")
+                      .data(nodes)
+                    .enter().append("circle")
+                      .attr("class", function(d) { return d.parent ? d.children ? "node" : "node node--leaf" : "node node--root"; })
+                      .style("fill", function(d) { return d.children ? color(d.depth) : null; })
+                      .on("click", function(d) { if (focus !== d) zoom(d), d3.event.stopPropagation(); });
+                  var text = svg.selectAll("image")
+                      .data(node_data)
+                    .enter().append("image").attr('width', 2*profile_size)
+                                .attr('height', 2*profile_size)
+                                .attr("x",-profile_size)
+                                .attr("y",-profile_size)
+                                .attr('xlink:href', function(d) {return d.picture; })
+                                // .attr("clip-path", function(e){ 
+                                //     var clipPath = svg.append('clipPath').attr("id","clipPath-"+e.name);
+                                //     $("#clipPath-"+e.name).append("circle").attr("id","image-"+e.name).attr("cx",profile_size).attr("cy",profile_size).attr("r",profile_size);
+                                //     return "url(#clipPath-"+e.name+")";
+                                // })
+                    // .append("text")
+                    //   .attr("class", "label")
+                      .style("fill-opacity", function(d) { return d.parent === root ? 1 : 1; })
+                      .style("display", function(d) { return d.parent === root ? "none" : "none"; })
+                      .style('stroke', 'rgba(100, 100, 100, 0.2)')
+                      .style('cursor', 'pointer')
+                      .on('mouseover', function(e, i) {
+                          showDetails(e, i, this);
+                      })
+                      .on('mouseout', function(e, i) {
+                          hideDetails(e,i);
+                          d3.select('#who').text('');
+                      });
+                    //   .text(function(d) { return d.name; });
+                
+                  var node = svg.selectAll("circle,image");
+                
+                  d3.select("body")
+                      .style("background", color(-1))
+                      .on("click", function() { zoom(root); });
+                
+                  zoomTo([root.x, root.y, root.r * 2 + margin]);
+                
+                d3.select(self.frameElement).style("height", diameter + "px");
+
+            } 
+
+            var display = function() {
+
+                // var node_data = [], lastNodeId, links = [], attributes, node_clusters = {};
+                
                             d3.select('#next_link').style('display', 'none');
                 d3.select('#graph').style('display', null);
 
@@ -351,10 +439,12 @@
                         + ' scale(' + d3.event.scale + ')');
                 }));
 
+
                     var graph = {};
                         // Add some nodes to the graph.
-                        graph.nodes = nodes;
+                        graph.nodes = node_data;
                         graph.edges = links;
+
 
                             // Construct a mapping of friendships.
                             var friendships = graph.edges.reduce(function(acc, x) {
@@ -384,53 +474,6 @@
                                 return Math.round(lerp(2, 10, (friendships[i] || [-1]).length / maxFriends));
                             };
 
-                            // Move d to be adjacent to the cluster node.
-                            function cluster(alpha) {
-                              return function(d) {
-                                var cluster = clusters[d.cluster];
-                                if (cluster === d) return;
-                                var x = d.x - cluster.x,
-                                    y = d.y - cluster.y,
-                                    l = Math.sqrt(x * x + y * y),
-                                    r = d.radius + cluster.radius;
-                                if (l != r) {
-                                  l = (l - r) / l * alpha;
-                                  d.x -= x *= l;
-                                  d.y -= y *= l;
-                                  cluster.x += x;
-                                  cluster.y += y;
-                                }
-                              };
-                            }
-                            
-                            // Resolves collisions between d and all other circles.
-                            function collide(alpha) {
-                              var quadtree = d3.geom.quadtree(nodes);
-                              return function(d) {
-                                var r = d.radius + maxRadius + Math.max(padding, clusterPadding),
-                                    nx1 = d.x - r,
-                                    nx2 = d.x + r,
-                                    ny1 = d.y - r,
-                                    ny2 = d.y + r;
-                                quadtree.visit(function(quad, x1, y1, x2, y2) {
-                                  if (quad.point && (quad.point !== d)) {
-                                    var x = d.x - quad.point.x,
-                                        y = d.y - quad.point.y,
-                                        l = Math.sqrt(x * x + y * y),
-                                        r = d.radius + quad.point.radius + (d.cluster === quad.point.cluster ? padding : clusterPadding);
-                                    if (l < r) {
-                                      l = (l - r) / l * alpha;
-                                      d.x -= x *= l;
-                                      d.y -= y *= l;
-                                      quad.point.x += x;
-                                      quad.point.y += y;
-                                    }
-                                  }
-                                  return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
-                                });
-                              };
-                            }
-
                             // Create a force layout to display nodes.
                             var force = d3.layout.force()
                                 .charge(-1000)
@@ -439,6 +482,7 @@
                                        parseInt(d3.select('#graph').style('height'), 10)])
                                 .nodes(graph.nodes)
                                 .links(graph.edges);
+
                             var paused = false;
 
                             d3.select('#pause').on('click', function() {
@@ -448,7 +492,7 @@
                                 } else {
                                     force.resume();
                                 }
-                            })
+                            });
 
                             // Add the edges to the SVG.
                             var edge = gPrime.selectAll('line.edge')
@@ -487,10 +531,10 @@
                                 .attr('height', 2*profile_size)
                                 .attr('xlink:href', function(d) {
                                     if("picture" in d3.select(this).data()[0]) {
-                                        return "http://api.randomuser.me/portraits/thumb/"+d3.select(this).data()[0].picture.split("portraits")[1];
+                                        return "https://raw.githubusercontent.com/Adith/Graphene/master/data/profiles/"+d3.select(this).data()[0].picture;
                                     }
                                     else {
-                                        return "http://www.columbia.edu/~at2904/default_profile.jpg";
+                                        return "https://raw.githubusercontent.com/Adith/Graphene/master/data/profiles/default_profile.jpg";
                                     }
                                     
                                 })
@@ -509,8 +553,7 @@
                                     hideDetails(d,i);
                                     d3.select('#who').text('');
                                     $("image").each(function(i){
-                                        if ($(this).attr("class") != undefined)
-                                            $(this).attr("class", $(this).attr("class").replace("blur","").replace("focus",""));
+                                        $(this).attr("class", $(this).attr("class").replace("blur","").replace("focus",""));
                                     });
                                     
                                 })
@@ -518,7 +561,10 @@
 
                             // Hook up some events to D3.js.
                             force.on('tick', function(e) {
-                                node.attr('x', function(d) { $("#image-"+d.id).attr("cx",d.x); return d.x - profile_size; })
+                                node
+                                    // .each(cluster(5 * e.alpha * e.alpha))
+                                    // .each(collide(0.25))
+                                    .attr('x', function(d) { $("#image-"+d.id).attr("cx",d.x); return d.x - profile_size; })
                                     .attr('y', function(d) { $("#image-"+d.id).attr("cy",d.y); return d.y - profile_size; });
 
                                 edge.attr('x1', function(d) { return d.source.x; })
@@ -526,7 +572,6 @@
                                     .attr('x2', function(d) { return d.target.x; })
                                     .attr('y2', function(d) { return d.target.y; });
                             });
-
                             // Start the simulation.
                             force.start();
                         }
