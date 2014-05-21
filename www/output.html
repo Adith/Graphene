@@ -292,10 +292,10 @@
                 d3.select('#who').text(data["name"]);
                 content += "<clipPath id='tooltip-image'><circle cx='106' cy='106' r='75'></circle></clipPath>";
                 if("picture" in data){
-                    content += '<svg width="200px" height="200px"><defs><clipPath id="myClip"><circle r="80" cx="60%" cy="50%"></circle></clipPath></defs><image x="7.5%" width="200" height="200" y="10" xlink:href="'+data["picture"]+'"clip-path="url(#myClip)"></image></svg>';
+                    content += '<svg width="200px" height="200px" style="margin-left:35px"><defs><clipPath id="myClip"><circle r="80" cx="60%" cy="50%"></circle></clipPath></defs><image x="10%" width="200" height="200" y="10" xlink:href="https://raw.githubusercontent.com/Adith/Graphene/master/data/profiles/'+data["picture"]+'"clip-path="url(#myClip)"></image></svg>';
                 }
                 else {
-                    content += '<svg width="200px" height="200px"><defs><clipPath id="myClip"><circle r="80" cx="60%" cy="50%"></circle></clipPath></defs><image x="7.5%" width="200" height="200" y="10" xlink:href="http://www.columbia.edu/~at2904/default_profile.jpg"clip-path="url(#myClip)"></image></svg>';   
+                    content += '<svg width="200px" height="200px" style="margin-left:35px"><defs><clipPath id="myClip"><circle r="80" cx="60%" cy="50%"></circle></clipPath></defs><image x="10%" width="200" height="200" y="10" xlink:href="https://raw.githubusercontent.com/Adith/Graphene/master/data/profiles/default_profile.jpg" clip-path="url(#myClip)"></image></svg>';   
                 }
                 showTooltip(content,d3.event);
             }
@@ -553,6 +553,7 @@
                                     hideDetails(d,i);
                                     d3.select('#who').text('');
                                     $("image").each(function(i){
+                                      if ($(this).attr("class") != undefined)
                                         $(this).attr("class", $(this).attr("class").replace("blur","").replace("focus",""));
                                     });
                                     
