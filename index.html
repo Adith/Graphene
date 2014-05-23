@@ -94,7 +94,7 @@ Profile attributes generated at <a href="randomuser.me">pseudo-random</a>.</p>
 
 <a href="samples/output_stock_features.html" target="_blank">See this in action!</a><hr>
 
-<p><img src="https://raw.githubusercontent.com/Adith/Graphene/master/Assets/Profile_Card.png" alt="Standard View with Profile Card"></p>
+<p><img src="https://raw.githubusercontent.com/Adith/Graphene/gh-pages/images/Profile_Card.png" alt="Standard View with Profile Card"></p>
 
 <hr><h4>
 <a name="mesh-creation-and-output" class="anchor" href="#mesh-creation-and-output"><span class="octicon octicon-link"></span></a>Mesh creation and output:</h4>
@@ -113,7 +113,7 @@ From:
 <p>This starts the user off with a mesh graph (every node connected to every other node). Helps ease work with highly connected graphs, which can be formed by removing appropriate edges.</p>
 <a href="samples/output_mesh.html" target="_blank">See this in action!</a><hr>
 
-<p><img src="https://raw.githubusercontent.com/Adith/Graphene/master/Assets/Mesh.png" alt="Mesh"></p>
+<p><img src="https://raw.githubusercontent.com/Adith/Graphene/gh-pages/images/Mesh.png" alt="Mesh"></p>
 
 <hr><h4>
 <a name="graph-view-with-overlaid-nodes-highlighted-nodes-represent-a-global-reach" class="anchor" href="#graph-view-with-overlaid-nodes-highlighted-nodes-represent-a-global-reach"><span class="octicon octicon-link"></span></a>Graph View with overlaid nodes. Highlighted nodes represent a Global Reach.</h4>
@@ -174,14 +174,44 @@ This short, yet powerful program finds a (greedy) transitive closure of the grap
 <a href="samples/output_overlay.html" target="_blank">See this in action!</a>
 <hr>
 
-<p><img src="https://raw.githubusercontent.com/Adith/Graphene/master/Assets/Overlay.png" alt="Overlay"></p>
+<p><img src="https://raw.githubusercontent.com/Adith/Graphene/gh-pages/images/Overlay.png" alt="Overlay"></p>
+
+<hr><h4>
+<a name="graph-view-with-overlaid-nodes-highlighted-nodes-represent-a-global-reach" class="anchor" href="#graph-view-with-overlaid-nodes-highlighted-nodes-represent-a-global-reach"><span class="octicon octicon-link"></span></a>Cluster View of a graph's nodes. Members of the same cluster are shown with a silhouette circle symbolizing membership.</h4>
+<br>
+Cluster.ene:
+<pre>
+  <code>
+    person has name,city,picture;
+    graph = input("person","data/1.edges");
+
+    l = lambda (n1,n2):{ x=0; a=n1.["city"]; a=a[0]; b=n2.["city"]; b=b[0];
+                         if(a==b){ x=1; }; } => (x);
+    
+    output().cluster(l);  
+  </code>
+</pre>
+
+To Run:
+<pre>
+  <code>
+    $ ./graphene -f samples/Cluster.ene
+  </code>
+</pre>
+
+Yep, we have lambdas too! Given a graph with a set of nodes, and a user defined boolean lambda, clustering a graph is just a function call away!
+<br><br>
+<a href="samples/output_cluster.html" target="_blank">See this in action!</a>
+<hr>
+
+<p><img src="https://raw.githubusercontent.com/Adith/Graphene/gh-pages/images/cluster.png" alt="Cluster"></p>
 
 <hr><h4>
 <a name="graphical-interface-ip--op-besides-console-support-to-make-things-more-interesting" class="anchor" href="#graphical-interface-ip--op-besides-console-support-to-make-things-more-interesting"><span class="octicon octicon-link"></span></a>Graphical Interface i/p &amp; o/p besides console support, to make things more interesting!</h4>
 
 <p>from <code>input();</code></p>
 
-<p><img src="https://raw.githubusercontent.com/Adith/Graphene/master/Assets/input.png" alt="Input"></p>
+<p><img src="https://raw.githubusercontent.com/Adith/Graphene/gh-pages/images/input.png" alt="Input"></p>
 
 <hr><p>To get started, read <a href="https://github.com/Adith/Graphene/raw/master/Assets/Final%20Report/Graphene_Final_Presentation.pdf">this</a>.         </p>
 
