@@ -192,7 +192,7 @@ class Graph:
 
 			for node_id in overlay_node_list:
 				node_ref[node_id]["__tags__"] = node_ref[node_id]["__tags__"] + "active"
-			state["attributes"] = {"overlay":True}
+			state["attributes"] = {"overlay":True, "cluster":False}
 			with open('./proc/state.json', 'w') as outfile:
 				json.dump(state, outfile)
 
@@ -423,10 +423,9 @@ class Graph:
 	            nodeList[node.id].__cluster__ = index
 	            node.__cluster__=index
 	        index+=1
-	    #print nodeList
 	    
 	    if chained:
-	    	helper.goutput(self)
+	    	helper.goutput(self, False, True)
 	    return self
 
     # # Cluster Nodes

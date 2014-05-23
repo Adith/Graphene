@@ -133,7 +133,7 @@ def ginput(*args):
         gexit()
     return lib.graphList[len(lib.graphList)-1]
 
-def goutput(graph=None, isChained=False):
+def goutput(graph=None, isChained=False, cluster=False):
     # Prints state to D3
     # Note: state = ALL graphs
 
@@ -161,7 +161,7 @@ def goutput(graph=None, isChained=False):
 
     # Dump json to file
     with open('./proc/state.json', 'w') as outfile:
-        json.dump({"attributes":{"overlay":False},"nodes":nodes, "lastNodeId": len(nodes)-1, "links": graphs}, outfile)
+        json.dump({"attributes":{"overlay":False,"cluster":cluster},"nodes":nodes, "lastNodeId": len(nodes)-1, "links": graphs}, outfile)
 
     if not isChained:
         gui.output()

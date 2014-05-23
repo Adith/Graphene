@@ -224,7 +224,8 @@
             var lerp = function(a, b, t) {
                 return a + (b - a) * t;
             };
-            var node_data = [], lastNodeId, links = [], attributes, node_clusters = {};
+            var node_data = [], lastNodeId, links = [], attributes, node_clusters = {}, node, circle;
+            var margin = 50, diameter = window.innerHeight;
 
             function dispatch() {
                 $.ajax({
@@ -316,8 +317,8 @@
                     transition.selectAll("image")
                       .filter(function(d) { if(d == undefined ) {return false;} return d.parent === focus || this.style.display === "inline"; })
                         .style("fill-opacity", function(d) { return d.parent === focus ? 1 : 0; })
-                        .each("start", function(d) { if (d.parent !== focus) {this.style.display = "none"; flag = false;} else { if(this.style.display != "none"){this.style.display = "none"; flag = false;}} })
-                        .each("end", function(d) {  if (d.parent !== focus){ this.style.display = "none"; } else if(this.style.display != "none"){this.style.display = "none";} else { if(flag) this.style.display = "inline"; flag = true; }});
+                        .each("start", function(d) { if (d.parent !== focus) {this.style.display = "none"; } else { this.style.display = "inline"; } })
+                        // .each("end", function(d) {  if (d.parent !== focus){ this.style.display = "inline"; console.log(this); } else {this.style.display = "none"; console.log(this);}});
                   };
 
             var zoomTo = function(v) {
@@ -326,14 +327,27 @@
                     circle.attr("r", function(d) { return d.r * k; });
                   };
 
+            function size_by_cluster_density(obj, root) {
+              var profile_size = 145;
+              root = root["children"];
+              for(childID in root){
+                for(childletID in root[childID]["children"]) {  
+                  if(root[childID]["children"][childletID] == obj){
+                    if(root[childID]["children"].length == 1) {
+                      return 235;
+                    }
+                    else if(root[childID]["children"].length == 2) {
+                      return 140;
+                    }
+                    return 145 - (root[childID]["children"].length - 2)*20;
+                  }
+                }
+              }
+              return 0;
+            }
+
             var display_cluster = function() {
-                var profile_size = 80;
-                
-                
-                  
-                
-                var margin = 50,
-                    diameter = window.innerHeight;
+                var profile_size = 145;
                 
                 var color = d3.scale.linear()
                     .domain([-1, 5])
@@ -347,11 +361,16 @@
                 
                 var svg = d3.select("body").append("svg")
                     .attr("width", window.innerWidth - 15)
-                    .attr("height", window.innerHeight -15)
-                  .append("g")
+                    .attr("height", window.innerHeight -15);
+
+                  var g = svg.append("g")
+                  .attr("id","g")
                     .attr("transform", "translate(" + window.innerWidth / 2 + "," + window.innerHeight / 2 + ")");
+
+                    // $("#g").append('<clippath id="clip"><circle cx="0" cy="0" r="75"></circle></clippath>');
                 
                 var root = node_clusters;
+                
                   var focus = root,
                       nodes = pack.nodes(root),
                       view;
@@ -360,27 +379,42 @@
                     if(nodes[k]["picture"]) 
                         node_data.push(nodes[k]);
                 }
-
-                  var circle = svg.selectAll("circle")
+                var element_id = -1;
+                
+                  circle = g.selectAll("g")
                       .data(nodes)
                     .enter().append("circle")
                       .attr("class", function(d) { return d.parent ? d.children ? "node" : "node node--leaf" : "node node--root"; })
                       .style("fill", function(d) { return d.children ? color(d.depth) : null; })
                       .on("click", function(d) { if (focus !== d) zoom(d), d3.event.stopPropagation(); });
-                  var text = svg.selectAll("image")
+                  element_id = -1;
+                  g.selectAll("image")
                       .data(node_data)
-                    .enter().append("image").attr('width', 2*profile_size)
-                                .attr('height', 2*profile_size)
-                                .attr("x",-profile_size)
-                                .attr("y",-profile_size)
-                                .attr('xlink:href', function(d) {return d.picture; })
-                                // .attr("clip-path", function(e){ 
-                                //     var clipPath = svg.append('clipPath').attr("id","clipPath-"+e.name);
-                                //     $("#clipPath-"+e.name).append("circle").attr("id","image-"+e.name).attr("cx",profile_size).attr("cy",profile_size).attr("r",profile_size);
-                                //     return "url(#clipPath-"+e.name+")";
-                                // })
-                    // .append("text")
-                    //   .attr("class", "label")
+                    .enter().append("image").attr('width', function(e) {
+                                  return 2*size_by_cluster_density(e,root);
+                                })
+                                .attr('height', function(e) {
+                                  return 2*size_by_cluster_density(e,root);
+                                })
+                                .attr("x", function(e) {
+                                  return -size_by_cluster_density(e,root);
+                                })
+                                .attr("y", function(e){
+                                  return -size_by_cluster_density(e,root);
+                                })
+                                .attr('xlink:href', function(d) { 
+                                  if(d.picture!=undefined) 
+                                    return 'https://raw.githubusercontent.com/Adith/Graphene/master/data/profiles/'+d.picture; 
+                                  else
+                                    return 'https://raw.githubusercontent.com/Adith/Graphene/master/data/profiles/default_profile.jpg';
+                                 })
+                                .attr("clip-path", function(e) {
+                                  var size = size_by_cluster_density(e,root);
+                                  element_id = element_id + 1;
+                                    var clipPath = g.append('clipPath').attr("id","clipPath-"+element_id);
+                                    clipPath.append('ellipse').attr("id","image-"+element_id).attr("rx",size).attr("ry",size).attr("cx","0").attr("cy","0");
+                                    return "url(#clipPath-"+element_id+")";
+                                })
                       .style("fill-opacity", function(d) { return d.parent === root ? 1 : 1; })
                       .style("display", function(d) { return d.parent === root ? "none" : "none"; })
                       .style('stroke', 'rgba(100, 100, 100, 0.2)')
@@ -392,9 +426,12 @@
                           hideDetails(e,i);
                           d3.select('#who').text('');
                       });
-                    //   .text(function(d) { return d.name; });
+                      // var text = g.selectAll("circle").data(node_data).enter()
+                      //             .append("text")
+                      //             .attr("class", "label")
+                      //             .text(function(d) { return d.name; });
                 
-                  var node = svg.selectAll("circle,image");
+                  node = svg.selectAll("circle,image");
                 
                   d3.select("body")
                       .style("background", color(-1))

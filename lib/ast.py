@@ -681,6 +681,7 @@ def evaluateAST(a, lineno= "unknown", chained= False):
                 helper.ids[func.children[1].children[i]]= evaluateAST(func.children[3], lineno).value[i]
                 logging.info('Assigned '+str(func.children[1].children[i])+' to '+str(helper.ids[func.children[1].children[i]])+' inside funccall')
             logging.debug("MODIFIED scope: Before call:",helper.ids)
+            
             evaluateAST(func.children[0], lineno)
             
             node.value = []
